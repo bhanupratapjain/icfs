@@ -14,5 +14,5 @@ class HeadChunk:
         self.chunk_meta_name = None
 
     # Fetch Chunk Meta from Cloud and Create Local Chunk Meta object
-    def __load_chunk_meta(self):
+    def ___chunk_meta(self):
         self.chunk_meta = ChunkMeta(self.chunk_meta_name, self.p_account, self.s_account)
