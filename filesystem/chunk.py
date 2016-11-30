@@ -6,5 +6,5 @@ class Chunk:
         self.p_account = p_account
         self.s_account = s_account
         self.flags = flags
-    def  create(self):
+    def create(self):
         open(self.name,'w').close()

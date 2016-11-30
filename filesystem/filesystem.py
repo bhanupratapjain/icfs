@@ -5,8 +5,10 @@ from head_chunk import HeadChunk
 
 
 class FileSystem:
-    def _init_(self):
+    def __init__(self):
         self.accounts = []
+        self.open_files = dict()
+        self.fd  = 0
 
     def __get_random_account(self,primary_account = None):
         if primary_account is None:
@@ -23,11 +25,9 @@ class FileSystem:
     def chown(self, path, uid, gid):
         pass
 
-    def create(self, path, mode):#file_name
-        #iterate through cur dir head chunk data and append the data with given file name
+    def create(self, path, flags):#file_name
+        #TODO
         ####if the file_name is a path traverse accordingly and finally append to the data
-        #########if at any point of traverasal the folder wasnt found append to the headchunk data of that iteration, the name of the folder and continue
-        #after appending to head chunk creat a inode for the file(with random number), create chunk meta (with random number), then create one chunk (with chunk name)
         #Push these files using apis
         #return success
 
@@ -36,8 +36,7 @@ class FileSystem:
         s_account = self.__get_random_account(p_account)
         fo = FileObject(path)
         fo.create(p_account ,s_account)
-
-        pass
+        return self.__open_helper(fo,flags)
 
     def getattr(self, path, fh=None):
         pass
@@ -52,7 +51,16 @@ class FileSystem:
         pass
 
     def open(self, path, flags):#file_name
-        pass
+        fo = FileObject(path)
+        #fo.head_chunk =  HeadChunk(path, self.p_account, self.s_account)
+        #fo.head_chunk.chunk_meta = ChunkMeta(meta_name, self.p_account, self.s_account)
+        return self.__open_helper(fo,flags)
+
+    def __open_helper(self,fo,flags):
+        fo.open(flags)
+        self.fd += 1
+        self.open_files[self.fd] = fo
+        return self.fd
         #iterate through cur dir head chunk data and find headchunk-number for the file (fetch head chunk and fetch chunk meta)
         #####if the file_name is a path traverse accordingly and then fetch corresponding headchunk
         #use the head chunk to assemble file and save a local copy(hidden) with the file-name provided
@@ -103,5 +111,5 @@ if __name__ == "__main__":
     fs.accounts = ['s','w']
     #directory headchunk
     #dir_hc = HeadChunk( "headchunk_", "p_account", "s_account")
-    fs.create("a.txt",0);
-    #fs.open("a.txt");
+    fs.create("a.txt","r+");
+    #fs.open("a.txt","r+");
