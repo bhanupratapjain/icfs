@@ -28,7 +28,9 @@ class GDrive:
     def __init_drive(self):
         self.drive = GoogleDrive(self.gauth)
 
-    def pull(self):
+
+
+    def list_all(self):
         return self.drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
 
     def push(self):

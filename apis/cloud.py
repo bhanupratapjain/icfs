@@ -13,6 +13,6 @@ class Cloud:
 if __name__ == "__main__":
     cloud = Cloud()
     cloud.init_gdrive()
-    files = cloud.gdrive.pull()
+    files = cloud.gdrive.list_all()
     for f in files:
         print('title: %s, id: %s' % (f['title'], f['id']))
