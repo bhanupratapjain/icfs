@@ -6,7 +6,7 @@ class FileObject:
     def __init__(self, file_path):
         self.file_path= file_path
         self.head_chunk = None
-        self.local_file = None
+        self.os_fh = None
 
     def create(self,p_account,s_account):
         file_head_chunk_name = constants.HC_PREFIX + str(uuid.uuid4())
@@ -18,7 +18,7 @@ class FileObject:
         #download file
         local_file_name = self.__assemble()
         #open local copy
-        self.local_file = open(local_file_name,flags)
+        self.os_fh = os.open(local_file_name, flags)
 
     def __assemble(self):
         chunks = self.head_chunk.chunk_meta.chunks
@@ -32,3 +32,13 @@ class FileObject:
 
         return local_file_name
         #TODO push these files
+
+    def write(self,data, offset):
+        #TODO
+        #rsync
+        os.lseek(self.os_fh, offset, os.SEEK_SET)
+        return os.write(self.os_fh, data)
+
+    def read(self,data, length,offset):
+        os.lseek(self.os_fh, offset, os.SEEK_SET)
+        return os.read(self.os_fh, length)

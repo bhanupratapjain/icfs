@@ -1,3 +1,4 @@
+import os
 import random
 
 from file_object import FileObject
@@ -66,8 +67,10 @@ class FileSystem:
         #use the head chunk to assemble file and save a local copy(hidden) with the file-name provided
         #return file_name
 
-    def read(self, path, size, offset, fh):
-        pass
+    def read(self, path, size, length, offset, fh):
+        fo = self.open_files[fh]
+        return fo.read(size, length, offset)
+
 
     def readdir(self, path, fh):
         pass
@@ -103,7 +106,10 @@ class FileSystem:
         pass
 
     def write(self, path, data, offset, fh):
-        pass
+        fo = self.open_files[fh]
+        bytes = fo.write(data, offset)
+        return bytes
+
 
 
 if __name__ == "__main__":
@@ -111,5 +117,8 @@ if __name__ == "__main__":
     fs.accounts = ['s','w']
     #directory headchunk
     #dir_hc = HeadChunk( "headchunk_", "p_account", "s_account")
-    fs.create("a.txt","r+");
-    #fs.open("a.txt","r+");
+    fd = fs.create("a.txt",os.O_RDWR|os.O_CREAT);
+    #fd = fs.open("a.txt","r+");
+    fs.write(None,"data",0,fd);
+    fs.write(None,"s",0,fd);
+    print "reading ",fs.read(None,"s",10,0,fd);
