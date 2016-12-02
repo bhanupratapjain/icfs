@@ -8,20 +8,19 @@ from file_object import FileObject
 
 
 class FileSystem(LoggingMixIn,Operations):
-    def __init__(self):
-        self.mtpt = ""
+    def __init__(self, mtpt):
+        self.mtpt = mtpt
         self.root = None
         self.accounts = []
         self.open_files = dict()
         self.fd = 0
 
-    def mount(self, mtpt):
-        self.mtpt = mtpt
+    def init(self, path):
         p_account = self.__get_random_account()
         s_account = self.__get_random_account(p_account)
         self.root = FileObject(self.mtpt, "/")
-        self.root.create(p_account, s_account)
-        FUSE(self, self.mtpt, foreground=True)
+        self.root.create_root(p_account, s_account)
+        # FUSE(self, self.mtpt, foreground=True)
 
     def add_account(self, path):
         self.accounts.append(MockCloud(path))
@@ -41,7 +40,8 @@ class FileSystem(LoggingMixIn,Operations):
     def chown(self, path, uid, gid):
         pass
 
-    def create(self, path, mode):  # file_name
+    # Should Push After Successful create
+    def create(self, path, mode, fip=None):  # file_name
         # TODO
         ####
         # Append in Parent Directory
@@ -67,7 +67,7 @@ class FileSystem(LoggingMixIn,Operations):
         pass
 
     def open(self, path, flags):  # file_name
-        fo = FileObject(path)
+        fo = FileObject(self.mtpt,path)
         # fo.head_chunk =  HeadChunk(path, self.p_account, self.s_account)
         # fo.head_chunk.chunk_meta = ChunkMeta(meta_name, self.p_account, self.s_account)
         return self.__open_helper(fo, flags)
@@ -78,9 +78,9 @@ class FileSystem(LoggingMixIn,Operations):
         self.open_files[self.fd] = fo
         return self.fd
 
-    def read(self, path, size, length, offset, fh):
+    def read(self, path, length, offset, fh):
         fo = self.open_files[fh]
-        return fo.read(size, length, offset)
+        return fo.read(length, offset)
 
     def readdir(self, path, fh):
         pass
@@ -121,18 +121,18 @@ class FileSystem(LoggingMixIn,Operations):
         return bytes
 
 if __name__ == "__main__":
-    fs = FileSystem()
-    fs.accounts = ['s', 'w']
+    fs = FileSystem("./mpt/")
+    # fs.accounts = ['s', 'w']
     # directory headchunk
     # dir_hc = HeadChunk( "headchunk_", "p_account", "s_account")
-    fd = fs.create("a.txt", os.O_RDWR | os.O_CREAT)
-    # fd = fs.open("a.txt","r+");
-    fs.write(None, "data", 0, fd)
-    fs.write(None, "s", 0, fd)
-    print "reading ", fs.read(None, "s", 10, 0, fd)
+    # fd = fs.create("a.txt", os.O_RDWR | os.O_CREAT)
+    # # fd = fs.open("a.txt","r+");
+    # fs.write(None, "data", 0, fd)
+    # fs.write(None, "s", 0, fd)
+    # print "reading ", fs.read(None, "s", 10, 0, fd)
     fs.add_account("~/mock_cloud1/")
     fs.add_account("~/mock_cloud2/")
-    fs.mount("./mpt/")
+    fs.init("/")
     # directory headchunk
     # dir_hc = HeadChunk( "headchunk_", "p_account", "s_account")
     # fs.create("a.txt", "r+")

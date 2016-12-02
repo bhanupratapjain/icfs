@@ -1,3 +1,5 @@
+import json
+import os
 import uuid
 
 import constants
@@ -16,19 +18,30 @@ class HeadChunk:
 
     def create(self):
         meta_name = constants.CM_PREFIX + str(uuid.uuid4())
-        self.chunk_meta = ChunkMeta(self.mpt, self.mpt + meta_name,
+        self.chunk_meta = ChunkMeta(self.mpt, meta_name,
                                     self.p_account, self.s_account)
         self.chunk_meta.create()
         self.write_file()
 
-    # 1. Fetch and init Head Chunk
-    def __fetch_head_chunk(self):
-        self.chunk_meta_name = None
+    # Should be called after fetch()
+    def load(self):
+        with open(self.mpt+self.name) as hc:
+            hc_obj = json.load(hc)
+            cm_data = hc_obj["chunk_meta"]
+            self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"],
+                                        cm_data["p_account"],
+                                        cm_data["s_account"])
+            self.chunk_meta.fetch()
+            self.chunk_meta.load()
 
-    # Fetch Chunk Meta from Cloud and Create Local Chunk Meta object
-    def ___chunk_meta(self):
-        self.chunk_meta = ChunkMeta(self.chunk_meta_name, self.p_account,
-                                    self.s_account)
+    def fetch(self):
+        if not os.path.exists(self.mpt + self.name):
+            pass # Fetch Head Chunk
+
+    def push(self):
+        self.p_account.push(self.mpt + self.name)
+        self.s_account.push(self.mpt + self.name)
+        self.chunk_meta.push()
 
     def append_data(self, data):
         self.chunk_meta.append_data(data)
@@ -43,4 +56,4 @@ class HeadChunk:
             'p_account': str(self.chunk_meta.p_account),
             's_account': str(self.chunk_meta.s_account)
         }
-        file_handler.json_to_file(self.name, data)
+        file_handler.json_to_file(self.mpt+self.name, data)
