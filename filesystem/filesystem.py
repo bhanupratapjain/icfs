@@ -46,7 +46,7 @@ class FileSystem(LoggingMixIn,Operations):
         ####
         # Append in Parent Directory
         # if the file_name is a path traverse accordingly and finally append to the data
-        # Push these files using apis
+        # Push these files using cloudapi
         # return success
         p_account = self.__get_random_account()
         s_account = self.__get_random_account(p_account)
