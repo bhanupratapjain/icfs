@@ -11,14 +11,13 @@ from global_constants import DATA_ROOT
 
 
 class GDrive:
-    def __init__(self, client_id, tmp_location, settings_file):
-        self.client_id = client_id
+    def __init__(self, tmp_location, settings_file):
+        self.client_id = None
         self.cred_dir = self.__init_cred_dir()
         self.gauth = None
         self.drive = None
         self.tmp = tmp_location
-        self.__init_auth(settings_file)
-        self.__init_drive()
+        self.settings = settings_file
 
     @staticmethod
     def __init_cred_dir():
@@ -27,8 +26,9 @@ class GDrive:
             os.mkdir(loc)
         return loc
 
-    def __init_auth(self, settings_file):
-        gauth = GoogleAuth(settings_file=settings_file)
+    def restore(self, client_id):
+        self.client_id = client_id
+        gauth = GoogleAuth(settings_file=self.settings)
         gauth.LoadCredentialsFile(os.path.join(self.cred_dir, self.client_id + ".json"))
         if gauth.credentials is None:
             gauth.CommandLineAuth()
@@ -40,6 +40,22 @@ class GDrive:
             gauth.Authorize()
         gauth.SaveCredentialsFile(os.path.join(self.cred_dir, self.client_id + ".json"))
         self.gauth = gauth
+        self.__init_drive()
+
+    def init_auth(self):
+        gauth = GoogleAuth(settings_file=self.settings)
+        gauth.CommandLineAuth()
+        self.gauth = gauth
+        self.__init_drive()
+        self.__set_client_id()
+        if not os.path.exists(os.path.join(self.cred_dir, self.client_id + ".json")):
+            gauth.SaveCredentialsFile(os.path.join(self.cred_dir, self.client_id + ".json"))
+        return self.client_id
+
+    def __set_client_id(self):
+        about = self.about()
+        client_id = about['rootFolderId']
+        self.client_id = client_id
 
     def __init_drive(self):
         self.drive = GoogleDrive(self.gauth)

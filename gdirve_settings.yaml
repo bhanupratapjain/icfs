@@ -4,7 +4,7 @@ client_config:
   client_secret: VXv6mvHXiS0o-uJvclMAVfkT
   revoke_uri: https://accounts.google.com/o/oauth2/revoke
 
-get_refresh_token: True
+get_refresh_token: False
 
 oauth_scope:
   - https://www.googleapis.com/auth/drive

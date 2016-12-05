@@ -1,7 +1,8 @@
 import json
-import os
 import sys
 import uuid
+
+import os
 
 import constants
 import file_handler
@@ -9,23 +10,23 @@ from chunk import Chunk
 
 
 class ChunkMeta:
-    def __init__(self, mpt, name, p_account, s_account):
+    def __init__(self, mpt, name, p_account, s_account, cloud):
         self.mpt = mpt
         self.name = name
         self.p_account = p_account
         self.s_account = s_account
         self.chunks = []
+        self.cloud = cloud
 
     def create(self):
-        chunk_name = constants.CHUNK_PREFIX + str(uuid.uuid4())
-        chunk = Chunk(0, self.mpt, chunk_name, self.p_account, self.s_account,
-                      None)
-        chunk.create()
-        self.chunks.append(chunk)
+        # chunk_name = constants.CHUNK_PREFIX + str(uuid.uuid4())
+        # chunk = Chunk(0, self.mpt, chunk_name, self.p_account, self.s_account, None)
+        # chunk.create()
+        # self.chunks.append(chunk)
         self.write_file()
 
     def load(self):
-        with open(self.mpt + self.name) as cm:
+        with open(os.path.join(self.mpt, self.name)) as cm:
             cm_data = json.load(cm)
             chunks_list = cm_data["chunks"]
             clist = []
@@ -36,7 +37,7 @@ class ChunkMeta:
             self.__fetch_chunks(clist)
             for chunk in chunks_list:
                 self.chunks.append(
-                    Chunk(chunk["checksum"],self.mpt, chunk["name"], chunk["p_account"],
+                    Chunk(chunk["checksum"], self.mpt, chunk["name"], chunk["p_account"],
                           chunk["s_account"], chunk["flags"]))
 
     def fetch(self):
@@ -44,16 +45,17 @@ class ChunkMeta:
             pass  # Fetch
 
     def push(self):
-        self.p_account.push(self.mpt + self.name)
-        self.s_account.push(self.mpt + self.name)
-        clist = self.__rsync_chunks()
-        self.__push_chunks(clist)
+        self.cloud.push(self.name, self.s_account)
+        self.cloud.push(self.name, self.p_account)
+        self.__push_chunks(self.__rsync_chunks())
 
     def __rsync_chunks(self):
-        pass
+        return self.chunks
 
     def __push_chunks(self, clist):
-        pass # Push All Chunks
+        for chunk in clist:
+            self.cloud.push(chunk.name, self.p_account)
+            self.cloud.push(chunk.name, self.s_account)
 
     def __fetch_chunks(self, clist):
         pass  # Fetch All Chunks in List
@@ -74,9 +76,6 @@ class ChunkMeta:
 
     def write_file(self):
         data = dict()
-        # data['name'] = self.name#We have it for debugging
-        # data['p_account'] = self.p_account#We have it for debugging
-        # data['s_account'] = self.s_account#We have it for debugging
         data['chunks'] = []
         for chunk in self.chunks:
             data['chunks'].append({
@@ -86,4 +85,11 @@ class ChunkMeta:
                 's_account': str(chunk.s_account),
                 'flags': chunk.flags
             })
-        file_handler.json_to_file(self.mpt+self.name, data)
+        file_handler.json_to_file(os.path.join(self.mpt, self.name), data)
+
+    def add_chunk(self):
+        chunk_name = constants.CHUNK_PREFIX + str(uuid.uuid4())
+        chunk = Chunk(0, self.mpt, chunk_name, self.p_account, self.s_account, None)
+        chunk.create()
+        self.chunks.append(chunk)
+        self.write_file()

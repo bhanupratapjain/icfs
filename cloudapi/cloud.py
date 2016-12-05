@@ -18,16 +18,26 @@ class Cloud:
             os.mkdir(loc)
         return loc
 
-    def add_gdrive(self, client_id):
-        self.clients[client_id] = GDrive(client_id, self.tmp, self.gdrive_settings)
+    def restore_gdrive(self,client_id):
+        g_drive = GDrive(self.tmp, self.gdrive_settings)
+        g_drive.restore(client_id)
+        self.clients[client_id] = g_drive
+
+    def add_gdrive(self):
+        g_drive = GDrive(self.tmp, self.gdrive_settings)
+        client_id = g_drive.init_auth()
+        self.clients[client_id] = g_drive
         return client_id
 
+    # Raises CloudIOError
     def pull(self, filename, client_id):
         self.clients[client_id].pull(filename)
 
+    # Raises CloudIOError
     def push(self, filename, client_id):
         self.clients[client_id].push(filename)
 
+    # Raises CloudIOError
     def remove(self, filename, client_id):
         self.clients[client_id].remove(filename)
 

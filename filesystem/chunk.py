@@ -1,3 +1,6 @@
+import os
+
+
 class Chunk:
     def __init__(self, checksum, mpt, name, p_account, s_account, flags):
         self.checksum = checksum
@@ -8,4 +11,4 @@ class Chunk:
         self.flags = flags
 
     def create(self):
-        open(self.mpt+self.name, 'w').close()
+        open(os.path.join(self.mpt, self.name), 'w').close()

@@ -1,47 +1,53 @@
 import json
-import os
 import uuid
+
+import os
 
 import constants
 import file_handler
 from chunk_meta import ChunkMeta
+from cloudapi.exceptions import CloudIOError
 
 
 class HeadChunk:
-    def __init__(self, mpt, name, p_account, s_account):
+    def __init__(self, mpt, name, p_account, s_account, cloud):
         self.mpt = mpt
         self.name = name
         self.p_account = p_account
         self.s_account = s_account
         self.chunk_meta_name = None
         self.chunk_meta = None
+        self.cloud = cloud
 
     def create(self):
         meta_name = constants.CM_PREFIX + str(uuid.uuid4())
-        self.chunk_meta = ChunkMeta(self.mpt, meta_name,
-                                    self.p_account, self.s_account)
+        self.chunk_meta = ChunkMeta(self.mpt, meta_name, self.p_account, self.s_account, self.cloud)
         self.chunk_meta.create()
         self.write_file()
 
     # Should be called after fetch()
     def load(self):
-        with open(self.mpt+self.name) as hc:
+        with open(os.path.join(self.mpt, self.name)) as hc:
             hc_obj = json.load(hc)
             cm_data = hc_obj["chunk_meta"]
-            self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"],
-                                        cm_data["p_account"],
-                                        cm_data["s_account"])
+            self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], cm_data["p_account"], cm_data["s_account"],
+                                        self.cloud)
             self.chunk_meta.fetch()
             self.chunk_meta.load()
 
     def fetch(self):
         if not os.path.exists(self.mpt + self.name):
-            pass # Fetch Head Chunk
+            pass  # Fetch Head Chunk
 
     def push(self):
-        self.p_account.push(self.mpt + self.name)
-        self.s_account.push(self.mpt + self.name)
-        self.chunk_meta.push()
+        try:
+            print "uploading {}{}{}".format(self.name, self.p_account, self.s_account)
+            self.cloud.push(self.name, self.p_account)
+            self.cloud.push(self.name, self.s_account)
+            self.chunk_meta.push()
+        except CloudIOError as ce:
+            print ce.message
+            print "Error While pushing in HeadChunk"
 
     def append_data(self, data):
         self.chunk_meta.append_data(data)
@@ -56,4 +62,4 @@ class HeadChunk:
             'p_account': str(self.chunk_meta.p_account),
             's_account': str(self.chunk_meta.s_account)
         }
-        file_handler.json_to_file(self.mpt+self.name, data)
+        file_handler.json_to_file(os.path.join(self.mpt, self.name), data)
