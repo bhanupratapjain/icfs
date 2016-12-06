@@ -1,21 +1,25 @@
+from __future__ import print_function
+
 import json
 import random
 
 import os
-#from fuse import Operations, LoggingMixIn
-#LoggingMixIn, Operations
 
 from cloudapi.cloud import Cloud
 from constants import CLOUD_ACCOUNTS_FILE_NAME
+from exceptions import ICFSError
 from file_object import FileObject
 from global_constants import PROJECT_ROOT
 
 
+# TODO::
+# Removed Fuse Inheritance to work on Windows
+# class FileSystem(LoggingMixIn, Operations):
 class FileSystem():
-    def __init__(self, mtpt):
-        self.mtpt = mtpt
-        self.root = None
-        self.current_dir = mtpt
+    def __init__(self, mpt):
+        self.mpt = mpt
+        self.root = None  # FileObject
+        self.cwd = None  # FileObject
         self.accounts = []
         self.open_files = dict()
         self.fd = 0
@@ -23,20 +27,24 @@ class FileSystem():
 
     def start(self):
         self.__create_root()
+        self.__create_cwd()
         # FUSE(self, self.mtpt, foreground=True)
 
     def __create_root(self):
-        self.root = FileObject(self.mtpt, "/", self.cloud)
+        self.root = FileObject(self.mpt, "/", self.cloud)
         self.root.create_root(self.accounts)
+
+    def __create_cwd(self):
+        self.cwd = self.root
 
     # 1. Create Cloud Object
     # 2. Check if accounts already registered.
     def __create_cloud(self):
         self.cloud = Cloud(os.path.join(PROJECT_ROOT, "gdirve_settings.yaml"))
-        if os.path.exists(os.path.join(self.mtpt, CLOUD_ACCOUNTS_FILE_NAME)):
+        if os.path.exists(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME)):
             self.__load_accounts()
         else:
-            with open(os.path.join(self.mtpt, CLOUD_ACCOUNTS_FILE_NAME), 'a+') as fp:
+            with open(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME), 'a+') as fp:
                 data = {
                     "accounts": []
                 }
@@ -44,7 +52,7 @@ class FileSystem():
 
     def __load_accounts(self):
         data = {}
-        with open(os.path.join(self.mtpt, CLOUD_ACCOUNTS_FILE_NAME), "r") as af:
+        with open(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME), "r") as af:
             data = json.load(af)
         for account_id in data['accounts']:
             self.cloud.restore_gdrive(account_id)
@@ -53,7 +61,7 @@ class FileSystem():
     def add_account(self):
         account_id = self.cloud.add_gdrive()
         self.accounts.append(account_id)
-        with open(os.path.join(self.mtpt, CLOUD_ACCOUNTS_FILE_NAME), "r+") as af:
+        with open(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME), "r+") as af:
             data = json.load(af)
             data["accounts"].append(account_id)
             af.seek(0)
@@ -76,14 +84,7 @@ class FileSystem():
 
     # Should Push After Successful create
     def create(self, path, mode, fip=None):  # file_name
-        # TODO
-        ####
-        # Append in Parent Directory
-        # if the file_name is a path traverse accordingly and finally append to the data
-        # Push these files using cloudapi
-        # return success
         self.open(path, os.O_WRONLY | os.O_CREAT)
-        # return self.__open_helper(fo, mode)
 
     def getattr(self, path, fh=None):
         return {}
@@ -100,22 +101,43 @@ class FileSystem():
     def __create(self, path):
         p_account = self.__get_random_account()
         s_account = self.__get_random_account(p_account)
-        fo = FileObject(self.mtpt, path, self.cloud)
-        fo.create(p_account, s_account)
-        fo.push()
+        fo = FileObject(self.mpt, path, self.cloud)
+        fo.create([p_account, s_account])
+        try:
+            fo.push()
+            self.__update_cwd(fo.head_chunk.name, fo.head_chunk.accounts)
+        except ICFSError as ie:
+            print
+            "Error in Pushing at FileSystem Layer. {}".format(ie.message)
         return fo
 
+    # 1.assembles chunk file for self.cwd
+    # 2.appends the newly created file to the assembled file
+    # 3.pushes self.cwd
+    def __update_cwd(self, hc_name, hc_accounts):
+        cwd_chunk_file_name = self.cwd.assemble()
+        with open(cwd_chunk_file_name, "a") as f:
+            wr_str = hc_name
+            for acc in hc_accounts:
+                wr_str += " {}".format(acc)
+            print("wirtitng shit")
+            print(wr_str)
+            f.write(wr_str)
+        self.cwd.push()  # does rsync and pushes
+        # self.cwd.head_chunk.load() #To be used when we decide to divide directories data into chunks
+
     def open(self, path, flags):  # file_name
+        # TODO
+        ####
+        # Append in Parent Directory during path
+        # if the file_name is a path traverse accordingly and finally append to the data
+        # Push these files using cloudapi
+        # return success
         if flags == os.O_WRONLY | os.O_CREAT:
             fo = self.__create(path)
         else:
-            fo = FileObject(self.mtpt, path, None)
-        # fo.head_chunk =  HeadChunk(path, self.p_account, self.s_account)
-        # fo.head_chunk.chunk_meta = ChunkMeta(meta_name, self.p_account, self.s_account)
-        return self.__open_helper(fo, flags)
-
-    def __open_helper(self, fo, flags):
-        fo.open(flags)
+            fo = FileObject(self.mpt, path, None)
+        # fo.open(flags)
         self.fd += 1
         self.open_files[self.fd] = fo
         return self.fd

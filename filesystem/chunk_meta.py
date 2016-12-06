@@ -17,11 +17,8 @@ class ChunkMeta:
         self.chunks = []
         self.cloud = cloud
         self.accounts = accounts
+
     def create(self):
-        # chunk_name = constants.CHUNK_PREFIX + str(uuid.uuid4())
-        # chunk = Chunk(0, self.mpt, chunk_name, self.p_account, self.s_account, None)
-        # chunk.create()
-        # self.chunks.append(chunk)
         self.write_file()
 
     def load(self):
@@ -36,21 +33,20 @@ class ChunkMeta:
             self.__fetch_chunks(clist)
             for chunk in chunks_list:
                 self.chunks.append(
-                    Chunk(chunk["checksum"], self.mpt, chunk["name"], chunk["flags"]))
+                    Chunk(chunk["checksum"], self.mpt, chunk["name"], chunk["flags"], chunk["accounts"]))
 
     def fetch(self):
         if not os.path.exists(self.mpt + self.name):
             for acc in self.accounts:
                 try:
-                    self.cloud.pull(self.name,acc)
+                    self.cloud.pull(self.name, acc)
                     break
                 except CloudIOError as cie:
-                    print "Except fetching chunk meta from account{},{}".format(acc,cie.message())
+                    print "Except fetching chunk meta from account{},{}".format(acc, cie.message())
 
-
+    #should return chunk objects
     def rsync_chunks(self):
         return self.chunks
-
 
     def __fetch_chunks(self, clist):
         pass  # Fetch All Chunks in List
