@@ -5,12 +5,6 @@
 - Gmail: 
     ID : icloudfilesys@gmail.com
     PASS : icfs@2016
-
-    ID_2 : icloudfilesys2@gmail.com
-    PASS : icfs@2016
-
-    ID_3 : icloudfilesys3@gmail.com
-    PASS : icfs@2016
 - Dropbox
 
 
@@ -28,18 +22,19 @@ Reason. when we init filesystem in a new PC we should be able to fetch hc_root f
 3) Moving the pushes to head layer
 Reason: push head chunk and meta chunk in one push call
 
-4) We have self.current_dir in filesystem to denote the current directory
+4) We have self.cwd in filesystem to denote the current directory.
+Initiallly self.cwd will point to root. Every time we do a cd we need to update this
 Reason: every time we create a file we need to know the parent directory so that we can update the data chunks to include file list
 
 
 5) In push (fileobject) if both primary and secondry fail we throw icfs exception which needs to be handled in filesystem
 
+6) removed p_account,s_account and put it in a list.
+	reason : root chunk needs to be pushed in every cloud service and not just rand primary and secondry. To maintain consistency
+7) We have updated current working directory after creating file
 
 
-
-
-
-
-
+Doubt
+1) during partition do we remove the accounts.json and partition out fully?
 
 
