@@ -2,7 +2,8 @@ import json
 import random
 
 import os
-from fuse import Operations, LoggingMixIn
+#from fuse import Operations, LoggingMixIn
+#LoggingMixIn, Operations
 
 from cloudapi.cloud import Cloud
 from constants import CLOUD_ACCOUNTS_FILE_NAME
@@ -10,10 +11,11 @@ from file_object import FileObject
 from global_constants import PROJECT_ROOT
 
 
-class FileSystem(LoggingMixIn, Operations):
+class FileSystem():
     def __init__(self, mtpt):
         self.mtpt = mtpt
         self.root = None
+        self.current_dir = mtpt
         self.accounts = []
         self.open_files = dict()
         self.fd = 0
@@ -21,14 +23,9 @@ class FileSystem(LoggingMixIn, Operations):
 
     def start(self):
         self.__create_root()
-        self.__create_root()
         # FUSE(self, self.mtpt, foreground=True)
 
-    def __
-
     def __create_root(self):
-        # p_account = self.__get_random_account()
-        # s_account = self.__get_random_account(p_account)
         self.root = FileObject(self.mtpt, "/", self.cloud)
         self.root.create_root(self.accounts)
 

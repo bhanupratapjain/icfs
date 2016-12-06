@@ -7,17 +7,16 @@ import os
 import constants
 import file_handler
 from chunk import Chunk
+from cloudapi.exceptions import CloudIOError
 
 
 class ChunkMeta:
-    def __init__(self, mpt, name, p_account, s_account, cloud):
+    def __init__(self, mpt, name, cloud, accounts):
         self.mpt = mpt
         self.name = name
-        self.p_account = p_account
-        self.s_account = s_account
         self.chunks = []
         self.cloud = cloud
-
+        self.accounts = accounts
     def create(self):
         # chunk_name = constants.CHUNK_PREFIX + str(uuid.uuid4())
         # chunk = Chunk(0, self.mpt, chunk_name, self.p_account, self.s_account, None)
@@ -37,25 +36,21 @@ class ChunkMeta:
             self.__fetch_chunks(clist)
             for chunk in chunks_list:
                 self.chunks.append(
-                    Chunk(chunk["checksum"], self.mpt, chunk["name"], chunk["p_account"],
-                          chunk["s_account"], chunk["flags"]))
+                    Chunk(chunk["checksum"], self.mpt, chunk["name"], chunk["flags"]))
 
     def fetch(self):
         if not os.path.exists(self.mpt + self.name):
-            pass  # Fetch
+            for acc in self.accounts:
+                try:
+                    self.cloud.pull(self.name,acc)
+                    break
+                except CloudIOError as cie:
+                    print "Except fetching chunk meta from account{},{}".format(acc,cie.message())
 
-    def push(self):
-        self.cloud.push(self.name, self.s_account)
-        self.cloud.push(self.name, self.p_account)
-        self.__push_chunks(self.__rsync_chunks())
 
-    def __rsync_chunks(self):
+    def rsync_chunks(self):
         return self.chunks
 
-    def __push_chunks(self, clist):
-        for chunk in clist:
-            self.cloud.push(chunk.name, self.p_account)
-            self.cloud.push(chunk.name, self.s_account)
 
     def __fetch_chunks(self, clist):
         pass  # Fetch All Chunks in List
@@ -71,7 +66,7 @@ class ChunkMeta:
         data_size = sys.getsizeof(data)
         if data_size + last_chunk_size > constants.CHUNK_SIZE:
             self.chunks.append(
-                Chunk(None, self.mpt, self.name + len(self.chunks), None, None, None))
+                Chunk(None, self.mpt, self.name + len(self.chunks), None))
         self.chunks[-1].append(data)
 
     def write_file(self):
@@ -81,15 +76,14 @@ class ChunkMeta:
             data['chunks'].append({
                 'checksum': chunk.checksum,
                 'name': chunk.name,
-                'p_account': str(chunk.p_account),
-                's_account': str(chunk.s_account),
-                'flags': chunk.flags
+                'flags': chunk.flags,
+                'accounts': chunk.accounts
             })
         file_handler.json_to_file(os.path.join(self.mpt, self.name), data)
 
     def add_chunk(self):
         chunk_name = constants.CHUNK_PREFIX + str(uuid.uuid4())
-        chunk = Chunk(0, self.mpt, chunk_name, self.p_account, self.s_account, None)
+        chunk = Chunk(0, self.mpt, chunk_name, None, self.accounts)
         chunk.create()
         self.chunks.append(chunk)
         self.write_file()
