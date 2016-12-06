@@ -115,13 +115,12 @@ class FileSystem():
     # 2.appends the newly created file to the assembled file
     # 3.pushes self.cwd
     def __update_cwd(self, hc_name, hc_accounts):
+        # TODO: Remove assemble as assemble combines constants.CHUNK_SIZE
         cwd_chunk_file_name = self.cwd.assemble()
-        with open(cwd_chunk_file_name, "a") as f:
+        with open(os.path.join(self.mpt, cwd_chunk_file_name), "a") as f:
             wr_str = hc_name
             for acc in hc_accounts:
                 wr_str += " {}".format(acc)
-            print("wirtitng shit")
-            print(wr_str)
             f.write(wr_str)
         self.cwd.push()  # does rsync and pushes
         # self.cwd.head_chunk.load() #To be used when we decide to divide directories data into chunks
