@@ -27,7 +27,7 @@ class FileObject:
 
         # self.parent.close()
 
-    def create_root(self, p_account, s_account):
+    def create_root(self, accounts):
         file_head_chunk_name = constants.ROOT_HC
         self.head_chunk = HeadChunk(self.mpt, file_head_chunk_name, p_account, s_account, self.cloud)
         if not os.path.exists(os.path.join(self.mpt, file_head_chunk_name)):
@@ -42,7 +42,7 @@ class FileObject:
     def open(self, flags):
         # TODO
         # Figure out Head Chunk
-        self.head_chunk = self.__find_head_chunk()
+        self.__find_head_chunk()
         self.head_chunk.fetch()
         self.head_chunk.load()
         local_file_name = self.__assemble()
@@ -53,7 +53,8 @@ class FileObject:
         self.head_chunk.push()
 
     def __find_head_chunk(self):
-        pass
+        if self.head_chunk is not None:
+            pass
 
     def __get_parent(self):
         pass

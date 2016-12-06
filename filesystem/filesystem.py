@@ -20,11 +20,17 @@ class FileSystem(LoggingMixIn, Operations):
         self.__create_cloud()
 
     def start(self):
-        p_account = self.__get_random_account()
-        s_account = self.__get_random_account(p_account)
-        self.root = FileObject(self.mtpt, "/", self.cloud)
-        self.root.create_root(p_account, s_account)
+        self.__create_root()
+        self.__create_root()
         # FUSE(self, self.mtpt, foreground=True)
+
+    def __
+
+    def __create_root(self):
+        # p_account = self.__get_random_account()
+        # s_account = self.__get_random_account(p_account)
+        self.root = FileObject(self.mtpt, "/", self.cloud)
+        self.root.create_root(self.accounts)
 
     # 1. Create Cloud Object
     # 2. Check if accounts already registered.

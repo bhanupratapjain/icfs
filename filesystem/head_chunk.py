@@ -37,11 +37,12 @@ class HeadChunk:
 
     def fetch(self):
         if not os.path.exists(self.mpt + self.name):
-            pass  # Fetch Head Chunk
+            pass
+            # try:
+            #     self.cloud
 
     def push(self):
         try:
-            print "uploading {}{}{}".format(self.name, self.p_account, self.s_account)
             self.cloud.push(self.name, self.p_account)
             self.cloud.push(self.name, self.s_account)
             self.chunk_meta.push()

@@ -6,5 +6,5 @@ if __name__ == "__main__":
     # fs.add_account()
     # fs.add_account()
     fs.start()
-    # fs.create("/test.txt", None)
+    fs.create("/test.txt", None)
     # fs.create("/test.txt", "r+")
