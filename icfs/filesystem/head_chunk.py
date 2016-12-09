@@ -1,12 +1,11 @@
 import json
-import uuid
-
 import os
+import uuid
 
 import constants
 import file_handler
 from chunk_meta import ChunkMeta
-from cloudapi.exceptions import CloudIOError
+from icfs.cloudapi.exceptions import CloudIOError
 
 
 class HeadChunk:
@@ -20,27 +19,33 @@ class HeadChunk:
 
     def create(self):
         meta_name = constants.CM_PREFIX + str(uuid.uuid4())
-        self.chunk_meta = ChunkMeta(self.mpt, meta_name, self.cloud, self.accounts)
+        self.chunk_meta = ChunkMeta(self.mpt, meta_name, self.cloud,
+                                    self.accounts)
         self.chunk_meta.create()
         self.write_file()
 
     # Should be called after fetch()
     def load(self):
+        print "In load"
         with open(os.path.join(self.mpt, self.name)) as hc:
             hc_obj = json.load(hc)
             cm_data = hc_obj["chunk_meta"]
-            self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], self.cloud, cm_data["accounts"])
+            self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], self.cloud,
+                                        cm_data["accounts"])
             self.chunk_meta.fetch()
             self.chunk_meta.load()
 
     def fetch(self):
-        if not os.path.exists(self.mpt + self.name):
+        print "path in fetch", os.path.join(self.mpt, self.name)
+        if not os.path.exists(os.path.join(self.mpt, self.name)):
+            print "In if fetch"
             for acc in self.accounts:
                 try:
-                    self.cloud.pull(self.name,acc)
+                    self.cloud.pull(self.name, acc)
                     break
                 except CloudIOError as cie:
-                    print "Except fetching head chunk from account{},{}".format(acc,cie.message())
+                    print "Except fetching head chunk from account{},{}".format(
+                        acc, cie.message)
 
     def append_data(self, data):
         self.chunk_meta.append_data(data)

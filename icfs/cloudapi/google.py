@@ -5,9 +5,9 @@ from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from pydrive.files import ApiRequestError, FileNotUploadedError, FileNotDownloadableError
 
-from cloudapi.constants import CLOUD_CREDENTIAL_DIR_NAME
-from cloudapi.exceptions import CloudIOError
-from global_constants import DATA_ROOT
+from icfs.cloudapi.constants import CLOUD_CREDENTIAL_DIR_NAME
+from icfs.cloudapi.exceptions import CloudIOError
+from icfs.global_constants import DATA_ROOT
 
 
 class GDrive:

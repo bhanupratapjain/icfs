@@ -2,8 +2,8 @@ import pprint
 
 import os
 
-from cloudapi.cloud import Cloud
-from global_constants import PROJECT_ROOT
+from icfs.cloudapi.cloud import Cloud
+from icfs.global_constants import PROJECT_ROOT
 
 if __name__ == "__main__":
     gdrive_settings = os.path.join(PROJECT_ROOT, "gdirve_settings.yaml")

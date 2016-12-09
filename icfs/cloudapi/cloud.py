@@ -1,8 +1,8 @@
 import os
 
-from cloudapi.constants import CLOUD_TEMP_DIR_NAME
-from cloudapi.google import GDrive
-from global_constants import DATA_ROOT
+from icfs.cloudapi.constants import CLOUD_TEMP_DIR_NAME
+from icfs.cloudapi.google import GDrive
+from icfs.global_constants import DATA_ROOT
 
 
 class Cloud:
