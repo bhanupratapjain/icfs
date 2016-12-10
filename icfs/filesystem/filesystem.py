@@ -20,7 +20,7 @@ class FileSystem(LoggingMixIn, Operations):
     # class FileSystem():
     def __init__(self, mpt):
         self.mnt = mpt
-        self.mpt = constants.MOUNT_ROOT
+        self.meta = constants.MOUNT_ROOT
         self.root = None  # FileObject
         self.cwd = None  # FileObject
         self.accounts = []
@@ -34,7 +34,7 @@ class FileSystem(LoggingMixIn, Operations):
         FUSE(self, self.mnt, foreground=True)
 
     def __create_root(self):
-        self.root = FileObject(self.mpt, "/", self.cloud)
+        self.root = FileObject(self.meta, "/", self.cloud)
         self.root.create_root(self.accounts)
 
     def __create_cwd(self):
@@ -44,10 +44,10 @@ class FileSystem(LoggingMixIn, Operations):
     # 2. Check if accounts already registered.
     def __create_cloud(self):
         self.cloud = Cloud(os.path.join(PROJECT_ROOT, "gdirve_settings.yaml"))
-        if os.path.exists(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME)):
+        if os.path.exists(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME)):
             self.__load_accounts()
         else:
-            with open(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME),
+            with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME),
                       'a+') as fp:
                 data = {
                     "accounts": []
@@ -56,7 +56,7 @@ class FileSystem(LoggingMixIn, Operations):
 
     def __load_accounts(self):
         data = {}
-        with open(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME), "r") as af:
+        with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME), "r") as af:
             data = json.load(af)
         for account_id in data['accounts']:
             self.cloud.restore_gdrive(account_id)
@@ -65,7 +65,7 @@ class FileSystem(LoggingMixIn, Operations):
     def add_account(self):
         account_id = self.cloud.add_gdrive()
         self.accounts.append(account_id)
-        with open(os.path.join(self.mpt, CLOUD_ACCOUNTS_FILE_NAME), "r+") as af:
+        with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME), "r+") as af:
             data = json.load(af)
             data["accounts"].append(account_id)
             af.seek(0)
@@ -109,7 +109,7 @@ class FileSystem(LoggingMixIn, Operations):
             raise FuseOSError(ENOENT)
         else:
             print "Before getattr"
-            fo = FileObject(self.mpt, path, self.cloud)
+            fo = FileObject(self.meta, path, self.cloud)
             d = fo.getattr()
             print "After getattr", d
             if d == {}:
@@ -129,7 +129,7 @@ class FileSystem(LoggingMixIn, Operations):
     def __create(self, path):
         p_account = self.__get_random_account()
         s_account = self.__get_random_account(p_account)
-        fo = FileObject(self.mpt, path, self.cloud)
+        fo = FileObject(self.meta, path, self.cloud)
         fo.create([p_account, s_account])
         # try:
         #     fo.push()
@@ -145,7 +145,7 @@ class FileSystem(LoggingMixIn, Operations):
     def __update_cwd(self, hc_name, hc_accounts):
         # TODO: Remove assemble as assemble combines constants.CHUNK_SIZE
         cwd_chunk_file_name = self.cwd.assemble()
-        with open(os.path.join(self.mpt, cwd_chunk_file_name), "a") as f:
+        with open(os.path.join(self.meta, cwd_chunk_file_name), "a") as f:
             wr_str = hc_name
             for acc in hc_accounts:
                 wr_str += " {}".format(acc)
@@ -164,7 +164,7 @@ class FileSystem(LoggingMixIn, Operations):
         if flags == os.O_WRONLY | os.O_CREAT:
             fo = self.__create(path)
         else:
-            fo = FileObject(self.mpt, path, self.cloud)
+            fo = FileObject(self.meta, path, self.cloud)
 
         if flags == os.O_APPEND:
             fo.open('a')
@@ -188,15 +188,15 @@ class FileSystem(LoggingMixIn, Operations):
     def readdir(self, path, fh):
         print "readdir", path
         try:
-            fo = FileObject(self.mpt, path, self.cloud)
+            fo = FileObject(self.meta, path, self.cloud)
             fo.open('r')
             files = []
-            for line in fo.os_fh:
+            for line in fo.fh:
                 files.append(line.split()[0])
             fo.close()
             print "direct", files
-            # return files
-            return ["hello"]
+            return files
+            # return ["hello"]
         except Exception:
             import traceback
             traceback.print_exc()
@@ -236,7 +236,7 @@ class FileSystem(LoggingMixIn, Operations):
         print "open", path
 
     def unlink(self, path):
-        pass
+        print "unlink", path
 
     def utimens(self, path, times=None):
         pass

@@ -16,7 +16,7 @@ class FileObject:
         self.file_path = file_path
         self.head_chunk = None
         self.ass_fname = None
-        self.os_fh = None
+        self.fh = None
         self.cloud = cloud
 
     def create(self, accounts):
@@ -68,12 +68,12 @@ class FileObject:
         self.head_chunk.load()
         self.ass_fname = self.assemble()
         # open local copy
-        self.os_fh = open(os.path.join(self.mpt, self.ass_fname), flags)
-        print "os_fh", self.os_fh
+        self.fh = open(os.path.join(self.mpt, self.ass_fname), flags)
+        print "os_fh", self.fh
 
     def close(self):
-        if self.os_fh is not None:
-            self.os_fh.close()
+        if self.fh is not None:
+            self.fh.close()
             self.split_chunks()
             os.remove(os.path.join(self.mpt, self.ass_fname))
 
@@ -102,9 +102,9 @@ class FileObject:
                 return
             parent, file = os.path.split(self.file_path)
             self.parent = FileObject(self.mpt, parent, self.cloud)
-            self.parent.__find_head_chunk()
+            # self.parent.__find_head_chunk()
             self.parent.open("r")
-            for line in self.parent.os_fh:
+            for line in self.parent.fh:
                 if line.startswith(file):
                     hc_name = line.split()[1]
                     self.head_chunk = HeadChunk(self.mpt, hc_name, self.cloud, None)
@@ -128,14 +128,16 @@ class FileObject:
 
     def write(self, data, offset):
         # os.lseek(self.os_fh, offset, os.SEEK_CUR)
-        print "write", self.os_fh, data
-        ret = self.os_fh.write(data)
+        print "write", self.fh, data
+        pos = self.fh.tell()
+        self.fh.write(data)
+        ret = self.fh.tell() - pos
         # self.head_chunk.push()
         return ret
 
     def read(self, length, offset):
-        os.lseek(self.os_fh, offset, os.SEEK_CUR)  # SET or CUR ?
-        return os.read(self.os_fh, length)
+        self.fh.seek(offset, 1)  # SET or CUR ?
+        return self.fh.read(length)
 
     def getattr(self):
         print "In getattr"
@@ -158,4 +160,12 @@ class FileObject:
                     break
                 ch.write(buf)
 
-                # Need to create new chunks
+        buf = f.read(constants.CHUNK_SIZE)
+        while buf != "":
+            print "buf", buf
+            chunk_name = self.head_chunk.chunk_meta.add_chunk()
+            with open(os.path.join(self.mpt,chunk_name), 'w') as ch:
+                ch.write(buf)
+                ch.flush()
+            buf = f.read(constants.CHUNK_SIZE)
+
