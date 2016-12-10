@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import threading
+
 import os
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
@@ -71,7 +73,7 @@ class GDrive:
         return self.drive.ListFile({'q': query}).GetList()
 
     def list_all(self):
-        return self.drive.ListFile({'q': "'root' in parents and trashed=false"}).GetList()
+        return self.drive.ListFile({'q': "'root' in parents or trashed=true"}).GetList()
 
     def about(self):
         return self.drive.GetAbout()
@@ -92,6 +94,19 @@ class GDrive:
         try:
             c_file = self.__get_file(filename)
             c_file.Delete()
+        except ApiRequestError as e:
+            raise CloudIOError(e.message)
+
+    def remove_all(self):
+        try:
+            threads = []
+            c_file_list = self.list_all()
+            for c_file in c_file_list:
+                th = threading.Thread(target=c_file.Delete())
+                th.start()
+                threads.append(th)
+            for th in threads:
+                th.join()
         except ApiRequestError as e:
             raise CloudIOError(e.message)
 

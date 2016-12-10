@@ -18,7 +18,7 @@ class Cloud:
             os.mkdir(loc)
         return loc
 
-    def restore_gdrive(self,client_id):
+    def restore_gdrive(self, client_id):
         g_drive = GDrive(self.tmp, self.gdrive_settings)
         g_drive.restore(client_id)
         self.clients[client_id] = g_drive
@@ -40,6 +40,10 @@ class Cloud:
     # Raises CloudIOError
     def remove(self, filename, client_id):
         self.clients[client_id].remove(filename)
+
+    # Removes everything from the cloud
+    def remove_all(self, client_id):
+        self.clients[client_id].remove_all()
 
     def about(self, client_id):
         about = self.clients[client_id].about()

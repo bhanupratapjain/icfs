@@ -1,5 +1,4 @@
 import os
 
-PROJECT_ROOT = "."
-DATA_ROOT = "./data"
-
+PROJECT_ROOT = "/vagrant/code/icfs"
+DATA_ROOT = os.path.join(PROJECT_ROOT, "data")

@@ -10,8 +10,9 @@ from fuse import LoggingMixIn, Operations, FUSE, FuseOSError
 import icfs.filesystem.constants as constants
 from icfs.cloudapi.cloud import Cloud
 from icfs.filesystem.constants import CLOUD_ACCOUNTS_FILE_NAME
+from icfs.filesystem.exceptions import ICFSError
 from icfs.filesystem.file_object import FileObject
-from icfs.global_constants import PROJECT_ROOT
+from icfs.global_constants import PROJECT_ROOT, DATA_ROOT
 
 
 # TODO::
@@ -24,7 +25,7 @@ class FileSystem(LoggingMixIn, Operations):
         self.root = None  # FileObject
         self.cwd = None  # FileObject
         self.accounts = []
-        self.open_files = dict()
+        self.open_files = dict() # {k-fd, v- icfs fo}
         self.fd = 0
         self.__create_cloud()
 
@@ -131,12 +132,17 @@ class FileSystem(LoggingMixIn, Operations):
         s_account = self.__get_random_account(p_account)
         fo = FileObject(self.meta, path, self.cloud)
         fo.create([p_account, s_account])
-        # try:
-        #     fo.push()
-        #     self.__update_cwd(fo.head_chunk.name, fo.head_chunk.accounts)
-        # except ICFSError as ie:
-        #     print
-        #     "Error in Pushing at FileSystem Layer. {}".format(ie.message)
+        print "************ Create FS HC {}, CM{}, CHUNKS{}".format(fo.head_chunk.name, fo.head_chunk.chunk_meta.name,
+                                                                 len(fo.head_chunk.chunk_meta.chunks))
+        try:
+            print "************* pushing [start]"
+            fo.push()
+            fo.parent.push()
+            print "************* pushing [end]"
+            # self.__update_cwd(fo.head_chunk.name, fo.head_chunk.accounts)
+        except ICFSError as ie:
+            print
+            "Error in Pushing at FileSystem Layer. {}".format(ie.message)
         return fo
 
     # 1.assembles chunk file for self.cwd
@@ -191,7 +197,7 @@ class FileSystem(LoggingMixIn, Operations):
             fo = FileObject(self.meta, path, self.cloud)
             fo.open('r')
             files = []
-            for line in fo.fh:
+            for line in fo.py_file:
                 files.append(line.split()[0])
             fo.close()
             print "direct", files
@@ -204,8 +210,8 @@ class FileSystem(LoggingMixIn, Operations):
 
     def release(self, path, fh):
         print "release", path, fh
-        fo = self.open_files[fh]
-        fo.close()
+        # fo = self.open_files[fh]
+        # fo.close()
 
     def flush(self, path, fh):
         print "flush", path, fh
@@ -248,7 +254,7 @@ class FileSystem(LoggingMixIn, Operations):
 
 
 if __name__ == "__main__":
-    fs = FileSystem("./data/mnt/")
+    fs = FileSystem(os.path.join(DATA_ROOT, "mnt"))
     # fs.add_account()
     # fs.add_account()
     fs.start()

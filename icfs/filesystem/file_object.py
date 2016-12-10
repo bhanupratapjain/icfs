@@ -1,6 +1,7 @@
-import os
 import time
 import uuid
+
+import os
 from stat import S_IFREG
 
 import constants
@@ -12,11 +13,11 @@ from icfs.filesystem.head_chunk import HeadChunk
 class FileObject:
     def __init__(self, mpt, file_path, cloud):
         self.mpt = mpt
-        self.parent = None  # File Object
+        self.parent = None  # ICFS File Object
         self.file_path = file_path
         self.head_chunk = None
-        self.ass_fname = None
-        self.fh = None
+        self.assembled = None  # Name of the assembled file
+        self.py_file = None  # Python's File Object, populated after open
         self.cloud = cloud
 
     def create(self, accounts):
@@ -24,10 +25,18 @@ class FileObject:
         self.head_chunk = HeadChunk(self.mpt, file_head_chunk_name, self.cloud,
                                     accounts)
         self.head_chunk.create()
+        print "************ Create FO HC {}, CM{}, CHUNKS{}".format(self.head_chunk.name, self.head_chunk.chunk_meta.name,
+                                                                 len(self.head_chunk.chunk_meta.chunks))
         directory, name = os.path.split(self.file_path)
         self.parent = FileObject(self.mpt, directory, self.cloud)
         self.parent.open('a')
-        self.parent.write(name + "  " + self.head_chunk.name + "\n", 0)
+        wr_str = "{} {}".format(name, self.head_chunk.name)
+        for acc in self.head_chunk.accounts:
+            print "*********Apending Accounts %s" % acc
+            wr_str += " {}".format(acc)
+        wr_str += "\n"
+        print "***********Appending String %s" % wr_str
+        self.parent.write(wr_str, 0)
         self.parent.close()
 
     def create_root(self, accounts):
@@ -66,24 +75,27 @@ class FileObject:
         self.__find_head_chunk()
         self.head_chunk.fetch()
         self.head_chunk.load()
-        self.ass_fname = self.assemble()
+        self.assembled = self.assemble()
         # open local copy
-        self.fh = open(os.path.join(self.mpt, self.ass_fname), flags)
-        print "os_fh", self.fh
+        self.py_file = open(os.path.join(self.mpt, self.assembled), flags)
+        print "os_fh", self.py_file
 
     def close(self):
-        if self.fh is not None:
-            self.fh.close()
+        if self.py_file is not None:
+            self.py_file.close()
             self.split_chunks()
-            os.remove(os.path.join(self.mpt, self.ass_fname))
+            os.remove(os.path.join(self.mpt, self.assembled))
 
     # throws ICFS error
     def push(self):
         obj_arr = [self.head_chunk, self.head_chunk.chunk_meta]
         obj_arr.extend(self.head_chunk.chunk_meta.rsync_chunks())
+        print "************************ obj array"
+        print obj_arr
         # TODO change the following to push all files  and do that in a separate thread
         for obj in obj_arr:
             acc_push_count = 0
+            print "Pushing Obj {} with {} accounts".format(obj.name, len(obj.accounts))
             for acc in obj.accounts:
                 try:
                     self.cloud.push(obj.name, acc)
@@ -104,7 +116,7 @@ class FileObject:
             self.parent = FileObject(self.mpt, parent, self.cloud)
             # self.parent.__find_head_chunk()
             self.parent.open("r")
-            for line in self.parent.fh:
+            for line in self.parent.py_file:
                 if line.startswith(file):
                     hc_name = line.split()[1]
                     self.head_chunk = HeadChunk(self.mpt, hc_name, self.cloud, None)
@@ -128,16 +140,16 @@ class FileObject:
 
     def write(self, data, offset):
         # os.lseek(self.os_fh, offset, os.SEEK_CUR)
-        print "write", self.fh, data
-        pos = self.fh.tell()
-        self.fh.write(data)
-        ret = self.fh.tell() - pos
+        print "write", self.py_file, data
+        pos = self.py_file.tell()
+        self.py_file.write(data)
+        ret = self.py_file.tell() - pos
         # self.head_chunk.push()
         return ret
 
     def read(self, length, offset):
-        self.fh.seek(offset, 1)  # SET or CUR ?
-        return self.fh.read(length)
+        self.py_file.seek(offset, 1)  # SET or CUR ?
+        return self.py_file.read(length)
 
     def getattr(self):
         print "In getattr"
@@ -152,7 +164,7 @@ class FileObject:
             return {}
 
     def split_chunks(self):
-        f = open(os.path.join(self.mpt, self.ass_fname), 'r')
+        f = open(os.path.join(self.mpt, self.assembled), 'r')
         for chunk in self.head_chunk.chunk_meta.chunks:
             with open(os.path.join(self.mpt, chunk.name), 'w') as ch:
                 buf = f.read(constants.CHUNK_SIZE)
@@ -164,8 +176,7 @@ class FileObject:
         while buf != "":
             print "buf", buf
             chunk_name = self.head_chunk.chunk_meta.add_chunk()
-            with open(os.path.join(self.mpt,chunk_name), 'w') as ch:
+            with open(os.path.join(self.mpt, chunk_name), 'w') as ch:
                 ch.write(buf)
                 ch.flush()
             buf = f.read(constants.CHUNK_SIZE)
-
