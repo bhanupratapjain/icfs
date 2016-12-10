@@ -3,6 +3,8 @@ import time
 import uuid
 from stat import S_IFREG
 
+import sys
+
 import constants
 from icfs.cloudapi.exceptions import CloudIOError
 from icfs.filesystem.exceptions import ICFSError
@@ -46,7 +48,7 @@ class FileObject:
                       "w") as ch:
                 ch.write(".  " + constants.ROOT_HC + "\n")
             # self..head_chunk.load() #To be used when we decide to divide directories data into chunks
-            self.push()
+            # self.push()
         else:  # else load from local
             self.head_chunk.load()
 
@@ -75,6 +77,9 @@ class FileObject:
         if self.fh is not None:
             self.fh.close()
             self.split_chunks()
+            self.head_chunk.size = os.path.getsize(os.path.join(self.mpt, self.ass_fname))
+            print "size in close", self.head_chunk.size
+            self.head_chunk.write_file()
             os.remove(os.path.join(self.mpt, self.ass_fname))
 
     # throws ICFS error
@@ -89,7 +94,7 @@ class FileObject:
                     self.cloud.push(obj.name, acc)
                     acc_push_count += 1
                 except CloudIOError as cie:
-                    print "Error pushing into primary {}".format(cie.message())
+                    print "Error pushing into primary {}".format(cie.message)
             if acc_push_count < 1:
                 raise ICFSError("error while push")
 
@@ -107,12 +112,10 @@ class FileObject:
             for line in self.parent.fh:
                 if line.startswith(file):
                     hc_name = line.split()[1]
-                    self.head_chunk = HeadChunk(self.mpt, hc_name, self.cloud, None)
+                    self.head_chunk = HeadChunk(self.mpt, hc_name, self.cloud,
+                                                None)
                     break
             self.parent.close()
-
-    def __get_parent(self):
-        pass
 
     def assemble(self):
         chunks = self.head_chunk.chunk_meta.chunks
@@ -129,11 +132,12 @@ class FileObject:
     def write(self, data, offset):
         # os.lseek(self.os_fh, offset, os.SEEK_CUR)
         print "write", self.fh, data
-        pos = self.fh.tell()
+        # pos = self.fh.tell()
         self.fh.write(data)
-        ret = self.fh.tell() - pos
+        # ret = self.fh.tell() - pos
         # self.head_chunk.push()
-        return ret
+        self.head_chunk.size += len(data)
+        return len(data)
 
     def read(self, length, offset):
         self.fh.seek(offset, 1)  # SET or CUR ?
@@ -144,10 +148,12 @@ class FileObject:
         self.__find_head_chunk()
         print "After find hc"
         if self.head_chunk is not None:
-            # self.head_chunk.fetch()
+            self.head_chunk.fetch()
+            self.head_chunk.load()
+            print "chunk_meta",self.head_chunk.chunk_meta.name
             now = time.time()
             return dict(st_mode=(S_IFREG | 0o755), st_ctime=now, st_mtime=now,
-                        st_atime=now, st_nlink=1)
+                        st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
         else:
             return {}
 
@@ -164,8 +170,33 @@ class FileObject:
         while buf != "":
             print "buf", buf
             chunk_name = self.head_chunk.chunk_meta.add_chunk()
-            with open(os.path.join(self.mpt,chunk_name), 'w') as ch:
+            with open(os.path.join(self.mpt, chunk_name), 'w') as ch:
                 ch.write(buf)
                 ch.flush()
             buf = f.read(constants.CHUNK_SIZE)
 
+    def get_parent(self):
+        directory, name = os.path.split(self.file_path)
+        self.parent = FileObject(self.mpt, directory, self.cloud)
+
+    def remove(self):
+        self.__find_head_chunk()
+        self.head_chunk.fetch()
+        self.head_chunk.load()
+        directory, file = os.path.split(self.file_path)
+        self.parent.open('r')
+        files = []
+        for line in self.parent.fh:
+            if not line.startswith(file):
+                files.append(tuple(line.split()))
+
+        print "files", files
+        self.parent.fh.close()
+        self.parent.fh = open(os.path.join(self.mpt, self.parent.ass_fname), 'w')
+        for line in files:
+            self.parent.write(line[0] + " " + line[1]+"\n", 0)
+
+        self.parent.fh.flush()
+        self.parent.close()
+
+        self.head_chunk.remove()
