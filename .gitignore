@@ -97,7 +97,7 @@ ENV/
 # Rope project settings
 .ropeproject
 
-hc_*
-cm_*
-chunk_*
+_hc_*
+_cm_*
+_chunk_*
 data
