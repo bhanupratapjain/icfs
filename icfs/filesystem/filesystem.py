@@ -136,6 +136,7 @@ class FileSystem(Operations):
         try:
             fo.push()
             fo.parent.push()
+            fo.parent.close()
         except ICFSError as ie:
             print
             "Error in Pushing at FileSystem Layer. {}".format(ie.message)
@@ -149,8 +150,8 @@ class FileSystem(Operations):
         for acc in fo.head_chunk.accounts:
             wr_str += " {}".format(acc)
         wr_str += "\n"
+        print "writing to parent assemble file ", parent_fo.a_f_name
         parent_fo.write(wr_str, 0)
-        parent_fo.close()
         return parent_fo
 
     def open(self, path, flags):  # file_name
@@ -184,6 +185,7 @@ class FileSystem(Operations):
 
     # Throws ICFSIOError
     def __search_hc(self, a_f_py_obj, file_name):
+        print "file_name ", file_name, "a_f_py_obj.name ,", a_f_py_obj.name
         for line in a_f_py_obj:
             if line.startswith(file_name):
                 hc_data = line.split()

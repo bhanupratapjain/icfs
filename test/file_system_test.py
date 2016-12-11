@@ -25,9 +25,9 @@ if __name__ == "__main__":
     #
     remove_files(fs)
     #
-    fs.add_account()
-    fs.add_account()
-    fs.add_account()
+    # fs.add_account()
+    # fs.add_account()
+    # fs.add_account()
     #
     fs.start()
     # fs.create("/test.txt", None)

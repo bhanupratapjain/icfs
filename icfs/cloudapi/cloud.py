@@ -6,7 +6,7 @@ from icfs.global_constants import DATA_ROOT
 from icfs.logger import class_decorator, logger
 
 
-@class_decorator(logger)
+# @class_decorator(logger)
 class Cloud:
     def __init__(self, gdrive_settings):
         self.gdrive_settings = gdrive_settings

@@ -36,8 +36,8 @@ class ChunkMeta:
             self.__fetch_chunks(clist)
             for chunk in chunks_list:
                 self.chunks.append(
-                    Chunk(chunk["checksum"], self.mpt, chunk["name"],
-                          chunk["flags"], chunk["accounts"]))
+                    Chunk(self.mpt, chunk["name"], chunk["flags"], chunk["accounts"], chunk["checksum_weak"],
+                          chunk["checksum_strong"]))
 
     def fetch(self):
         if not os.path.exists(os.path.join(self.mpt, self.name)):
@@ -48,10 +48,6 @@ class ChunkMeta:
                 except CloudIOError as cie:
                     print "Except fetching chunk meta from account{},{}".format(
                         acc, cie.message)
-
-    # should return chunk objects
-    def rsync_chunks(self):
-        return self.chunks
 
     def __fetch_chunks(self, clist):
         pass  # Fetch All Chunks in List
@@ -64,25 +60,36 @@ class ChunkMeta:
         data_size = sys.getsizeof(data)
         if data_size + last_chunk_size > icfs.filesystem.constants.CHUNK_SIZE:
             self.chunks.append(
-                Chunk(None, self.mpt, self.name + len(self.chunks), None))
+                Chunk(self.mpt, self.name + len(self.chunks), None, None, None))
         self.chunks[-1].append(data)
+
+    def remove_chunks(self):
+        for chunk in self.chunks:
+            os.remove(os.path.join(self.mpt, chunk.name))
 
     def write_file(self):
         data = dict()
         data['chunks'] = []
         for chunk in self.chunks:
             data['chunks'].append({
-                'checksum': chunk.checksum,
+                'checksum_weak': chunk.checksum_weak,
+                'checksum_strong': chunk.checksum_strong,
                 'name': chunk.name,
                 'flags': chunk.flags,
                 'accounts': chunk.accounts
             })
         icfs.filesystem.file_handler.json_to_file(os.path.join(self.mpt, self.name), data)
 
-    def add_chunk(self):
+    def add_chunk(self, data=''):
         chunk_name = icfs.filesystem.constants.CHUNK_PREFIX + str(uuid.uuid4())
-        chunk = Chunk(0, self.mpt, chunk_name, None, self.accounts)
-        chunk.create()
+        chunk = Chunk(self.mpt, chunk_name, None, self.accounts, None, None)
+        chunk.create(data)
         self.chunks.append(chunk)
         self.write_file()
         return chunk_name
+
+    def add_rsync_chunk(self, data):
+        chunk_name = icfs.filesystem.constants.CHUNK_PREFIX + str(uuid.uuid4())
+        chunk = Chunk(self.mpt, chunk_name, None, self.accounts, None, None)
+        chunk.rsync_create(data)
+        return chunk
