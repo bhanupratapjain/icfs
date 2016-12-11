@@ -77,10 +77,10 @@ class FileObject:
             self.py_file.close()
             self.split_chunks()
             self.head_chunk.size = os.path.getsize(
-                os.path.join(self.mpt, self.ass_fname))
+                os.path.join(self.mpt, self.assembled))
             print "size in close", self.head_chunk.size
             self.head_chunk.write_file()
-            os.remove(os.path.join(self.mpt, self.ass_fname))
+            os.remove(os.path.join(self.mpt, self.py_file))
 
     # throws ICFS error
     def push(self):
