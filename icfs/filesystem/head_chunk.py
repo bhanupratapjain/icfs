@@ -52,10 +52,6 @@ class HeadChunk:
     def append_data(self, data):
         self.chunk_meta.append_data(data)
 
-    def remove(self):
-        self.chunk_meta.remove()
-        os.remove(os.path.join(self.mpt, self.name))
-
     def write_file(self):
         data = dict()
         data['size'] = self.size

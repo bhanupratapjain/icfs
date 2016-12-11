@@ -1,8 +1,7 @@
 import json
+import os
 import sys
 import uuid
-
-import os
 
 import constants
 import file_handler
@@ -33,18 +32,20 @@ class ChunkMeta:
             self.__fetch_chunks(clist)
             for chunk in chunks_list:
                 self.chunks.append(
-                    Chunk(chunk["checksum"], self.mpt, chunk["name"], chunk["flags"], chunk["accounts"]))
+                    Chunk(chunk["checksum"], self.mpt, chunk["name"],
+                          chunk["flags"], chunk["accounts"]))
 
     def fetch(self):
-        if not os.path.exists(os.path.join(self.mpt ,self.name)):
+        if not os.path.exists(os.path.join(self.mpt, self.name)):
             for acc in self.accounts:
                 try:
                     self.cloud.pull(self.name, acc)
                     break
                 except CloudIOError as cie:
-                    print "Except fetching chunk meta from account{},{}".format(acc, cie.message)
+                    print "Except fetching chunk meta from account{},{}".format(
+                        acc, cie.message)
 
-    #should return chunk objects
+    # should return chunk objects
     def rsync_chunks(self):
         return self.chunks
 
@@ -65,11 +66,6 @@ class ChunkMeta:
                 Chunk(None, self.mpt, self.name + len(self.chunks), None))
         self.chunks[-1].append(data)
 
-    def remove(self):
-        for chunk in self.chunks:
-            chunk.remove()
-
-        os.remove(os.path.join(self.mpt,self.name))
 
     def write_file(self):
         data = dict()
