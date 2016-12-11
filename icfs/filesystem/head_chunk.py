@@ -27,6 +27,7 @@ class HeadChunk:
 
     # Should be called after fetch()
     def load(self):
+        print "hc load name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "start")
         print "In load"
         with open(os.path.join(self.mpt, self.name)) as hc:
             hc_obj = json.load(hc)
@@ -36,8 +37,11 @@ class HeadChunk:
                                         cm_data["accounts"])
             self.chunk_meta.fetch()
             self.chunk_meta.load()
+        print "hc load name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "end")
+
 
     def fetch(self):
+        print "hc fetch name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "start")
         print "path in fetch", os.path.join(self.mpt, self.name)
         if not os.path.exists(os.path.join(self.mpt, self.name)):
             print "In if fetch"
@@ -48,6 +52,8 @@ class HeadChunk:
                 except CloudIOError as cie:
                     print "Except fetching head chunk from account{},{}".format(
                         acc, cie.message)
+        print "hc fetch name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "end")
+
 
     def append_data(self, data):
         self.chunk_meta.append_data(data)
