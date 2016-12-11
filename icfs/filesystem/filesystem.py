@@ -137,7 +137,7 @@ class FileSystem(LoggingMixIn, Operations):
         s_account = self.__get_random_account(p_account)
         fo = FileObject(self.meta, path, self.cloud)
         fo.create([p_account, s_account])
-        fo.parent = self.__update_parend(path)
+        fo.parent = self.__update_parend(fo)
         print "************ Create FS HC {}, CM{}, CHUNKS{}".format(fo.head_chunk.name, fo.head_chunk.chunk_meta.name,
                                                                     len(fo.head_chunk.chunk_meta.chunks))
         try:
@@ -151,13 +151,13 @@ class FileSystem(LoggingMixIn, Operations):
         print "file system create [end] ", path
         return fo
 
-    def __update_parend(self, file_path):
+    def __update_parend(self, fo):
         print "file system "
-        directory, name = os.path.split(file_path)
+        directory, name = os.path.split(fo.file_path)
         parent_fo = FileObject(self.meta, directory, self.cloud)
         self.__open(parent_fo, os.O_APPEND)
-        wr_str = "{} {}".format(name, parent_fo.head_chunk.name)
-        for acc in parent_fo.head_chunk.accounts:
+        wr_str = "{} {}".format(name, fo.head_chunk.name)
+        for acc in fo.head_chunk.accounts:
             print "*********Apending Accounts %s" % acc
             wr_str += " {}".format(acc)
         wr_str += "\n"
@@ -249,7 +249,7 @@ class FileSystem(LoggingMixIn, Operations):
                 root_file_name = self.root.assemble()
                 with open(os.path.join(self.meta, root_file_name)) as rf:
                     file_hc_data = self.__search_hc(rf, file_name)
-                    fo.head_chunk = HeadChunk(self.mnt, file_hc_data[1],
+                    fo.head_chunk = HeadChunk(self.meta, file_hc_data[1],
                                               self.cloud, file_hc_data[2:])
                     print "file system find head chunk [root end]", fo.file_path
                     return
@@ -272,17 +272,17 @@ class FileSystem(LoggingMixIn, Operations):
                     hc_data = self.__search_hc(parent_fo.py_file, p)
                     parent_fo.close()
 
-                parent_fo = FileObject(self.mnt, parent_file_path, self.cloud)
+                parent_fo = FileObject(self.meta, parent_file_path, self.cloud)
                 parent_fo.head_chunk.name = hc_data[1]
                 parent_fo.head_chunk.accounts = hc_data[2:]
                 parent_fo.open("r")
 
             file_hc_data = self.__search_hc(parent_fo.py_file, file_name)
 
-            fo.head_chunk = HeadChunk(self.mnt, file_hc_data[1],
+            fo.head_chunk = HeadChunk(self.meta, file_hc_data[1],
                                       self.cloud, file_hc_data[2:])
-            print "file system find head chunk [end]", fo.file_path
-            return
+        print "file system find head chunk [end]", fo.file_path
+        return
 
     def __open(self, fo, flags):
         print "file system open [start]", fo.file_path
@@ -322,8 +322,8 @@ class FileSystem(LoggingMixIn, Operations):
 
     def release(self, path, fh):
         print "release", path, fh
-        # fo = self.open_files[fh]
-        # fo.close()
+        fo = self.open_files[fh]
+        fo.close()
 
     def flush(self, path, fh):
         print "flush", path, fh

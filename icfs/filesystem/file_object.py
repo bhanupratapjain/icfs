@@ -144,11 +144,13 @@ class FileObject:
         return self.py_file.read(length)
 
     def getattr(self):
-        print "In getattr"
-        print "After find hc"
+        print "file object n getattr [start]"
         self.head_chunk.fetch()
+        print "After Fetch"
         self.head_chunk.load()
+        print "After Load"
         now = time.time()
+        print "file object n getattr [end]"
         return dict(st_mode=(S_IFREG | 0o755), st_ctime=now, st_mtime=now,
                     st_atime=now, st_nlink=1)
 
