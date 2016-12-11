@@ -1,4 +1,5 @@
 # At the beginning of every .py file in the project
+import inspect
 import logging
 
 import sys
@@ -17,11 +18,13 @@ def logger(fn):
     from functools import wraps
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        f_back = sys._getframe().f_back
+        # f_back = sys._getframe().f_back
+        (frame, filename, line_number,
+         function_name, lines, index) = inspect.getouterframes(inspect.currentframe())[1]
         log = logging.getLogger(fn.__name__)
-        log.error('[%s] [%s] [Start]' % (f_back.f_code.co_filename, fn.__name__))
+        log.error('[%s] [%s] [Start]' % (filename, fn.__name__))
         out = apply(fn, args, kwargs)
-        log.error('[%s] [%s] [End]' % (f_back.f_code.co_filename, fn.__name__))
+        log.error('[%s] [%s] [End]' % (filename, fn.__name__))
         # Return the return value
         return out
     return wrapper
