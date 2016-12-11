@@ -1,7 +1,8 @@
-import os
 from shutil import copyfile
 
-from cloud_driver import CloudDriver
+import os
+
+from icfs.cloudapi.cloud_driver import CloudDriver
 
 
 class MockCloud(CloudDriver):

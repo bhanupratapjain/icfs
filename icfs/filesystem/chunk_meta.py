@@ -1,14 +1,18 @@
 import json
-import os
 import sys
 import uuid
 
-import constants
-import file_handler
-from chunk import Chunk
+import os
+
+import icfs.filesystem.constants
+import icfs.filesystem.file_handler
 from icfs.cloudapi.exceptions import CloudIOError
+from icfs.filesystem.chunk import Chunk
+from icfs.logger import class_decorator
+from icfs.logger import logger
 
 
+@class_decorator(logger)
 class ChunkMeta:
     def __init__(self, mpt, name, cloud, accounts):
         self.mpt = mpt
@@ -55,17 +59,13 @@ class ChunkMeta:
     def __fetch_chunk_meta(self):
         pass
 
-    def __load_chunks(self):
-        pass
-
     def append_data(self, data):
         last_chunk_size = sys.getsizeof(self.chunks[-1])
         data_size = sys.getsizeof(data)
-        if data_size + last_chunk_size > constants.CHUNK_SIZE:
+        if data_size + last_chunk_size > icfs.filesystem.constants.CHUNK_SIZE:
             self.chunks.append(
                 Chunk(None, self.mpt, self.name + len(self.chunks), None))
         self.chunks[-1].append(data)
-
 
     def write_file(self):
         data = dict()
@@ -77,10 +77,10 @@ class ChunkMeta:
                 'flags': chunk.flags,
                 'accounts': chunk.accounts
             })
-        file_handler.json_to_file(os.path.join(self.mpt, self.name), data)
+        icfs.filesystem.file_handler.json_to_file(os.path.join(self.mpt, self.name), data)
 
     def add_chunk(self):
-        chunk_name = constants.CHUNK_PREFIX + str(uuid.uuid4())
+        chunk_name = icfs.filesystem.constants.CHUNK_PREFIX + str(uuid.uuid4())
         chunk = Chunk(0, self.mpt, chunk_name, None, self.accounts)
         chunk.create()
         self.chunks.append(chunk)

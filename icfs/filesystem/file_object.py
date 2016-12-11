@@ -1,34 +1,32 @@
-import os
 import time
 import uuid
+
+import os
 from stat import S_IFREG
 
 import constants
 from icfs.cloudapi.exceptions import CloudIOError
 from icfs.filesystem.exceptions import ICFSError
 from icfs.filesystem.head_chunk import HeadChunk
+from icfs.logger import class_decorator, logger
 
 
+@class_decorator(logger)
 class FileObject:
     def __init__(self, mpt, file_path, cloud):
         self.mpt = mpt
         self.parent = None  # ICFS File Object
         self.file_path = file_path
         self.head_chunk = None
-        self.assembled = None  # Name of the assembled file
-        self.py_file = None  # Python's File Object, populated after open
+        self.a_f_name = None  # Name of the assembled file
+        self.a_f_py_obj = None  # Python's File Object, populated after open
         self.cloud = cloud
 
     def create(self, accounts):
-        print "file object create [start]", self.file_path
         file_head_chunk_name = constants.HC_PREFIX + str(uuid.uuid4())
         self.head_chunk = HeadChunk(self.mpt, file_head_chunk_name, self.cloud,
                                     accounts)
         self.head_chunk.create()
-        print "************ Create FO HC {}, CM{}, CHUNKS{}".format(self.head_chunk.name, self.head_chunk.chunk_meta.name,
-                                                                 len(self.head_chunk.chunk_meta.chunks))
-
-        print "file object create [end] ", self.file_path
 
     def create_root(self, accounts):
         file_head_chunk_name = constants.ROOT_HC
@@ -61,37 +59,27 @@ class FileObject:
                                                                      cie.message)
 
     def open(self, flags):
-        # TODO
-        # Figure out Head Chunk
-        # self.__find_head_chunk()
         self.head_chunk.fetch()
         self.head_chunk.load()
-        self.assembled = self.assemble()
-        # open local copy
-        self.py_file = open(os.path.join(self.mpt, self.assembled), flags)
-        print "os_fh", self.py_file
+        self.a_f_name = self.assemble()
+        self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), flags)
 
     def close(self):
-        if self.py_file is not None:
-            self.py_file.close()
+        if self.a_f_py_obj is not None:
+            self.a_f_py_obj.close()
             self.split_chunks()
             self.head_chunk.size = os.path.getsize(
-                os.path.join(self.mpt, self.assembled))
-            print "size in close", self.head_chunk.size
+                os.path.join(self.mpt, self.a_f_name))
             self.head_chunk.write_file()
-            os.remove(os.path.join(self.mpt, self.py_file))
+            os.remove(os.path.join(self.mpt, self.a_f_name))
 
     # throws ICFS error
     def push(self):
         obj_arr = [self.head_chunk, self.head_chunk.chunk_meta]
         obj_arr.extend(self.head_chunk.chunk_meta.rsync_chunks())
-        print "************************ obj array"
-        print obj_arr
         # TODO change the following to push all files  and do that in a separate thread
         for obj in obj_arr:
             acc_push_count = 0
-            print "Pushing Obj {} with {} accounts".format(obj.name,
-                                                           len(obj.accounts))
             for acc in obj.accounts:
                 try:
                     self.cloud.push(obj.name, acc)
@@ -100,25 +88,6 @@ class FileObject:
                     print "Error pushing into primary {}".format(cie.message)
             if acc_push_count < 1:
                 raise ICFSError("error while push")
-
-    def __find_head_chunk(self):
-        if self.head_chunk is None:
-            print "path", self.file_path
-            if self.file_path == "/":
-                self.head_chunk = HeadChunk(self.mpt, constants.ROOT_HC,
-                                            self.cloud, None)
-                return
-            parent, file = os.path.split(self.file_path)
-            self.parent = FileObject(self.mpt, parent, self.cloud)
-            # self.parent.__find_head_chunk()
-            self.parent.open("r")
-            for line in self.parent.py_file:
-                if line.startswith(file):
-                    hc_name = line.split()[1]
-                    self.head_chunk = HeadChunk(self.mpt, hc_name, self.cloud,
-                                                None)
-                    break
-            self.parent.close()
 
     def assemble(self):
         chunks = self.head_chunk.chunk_meta.chunks
@@ -133,32 +102,25 @@ class FileObject:
         return local_file_name
 
     def write(self, data, offset):
-        # os.lseek(self.os_fh, offset, os.SEEK_CUR)
-        print "write", self.py_file, data
-        pos = self.py_file.tell()
-        self.py_file.write(data)
-        ret = self.py_file.tell() - pos
-        # self.head_chunk.push()
+        pos = self.a_f_py_obj.tell()
+        self.a_f_py_obj.write(data)
+        ret = self.a_f_py_obj.tell() - pos
         self.head_chunk.size += ret
         return ret
 
     def read(self, length, offset):
-        self.py_file.seek(offset, 1)  # SET or CUR ?
-        return self.py_file.read(length)
+        self.a_f_py_obj.seek(offset, 1)  # SET or CUR ?
+        return self.a_f_py_obj.read(length)
 
     def getattr(self):
-        print "file object n getattr [start]"
         self.head_chunk.fetch()
-        print "After Fetch"
         self.head_chunk.load()
-        print "After Load"
         now = time.time()
-        print "file object n getattr [end]"
         return dict(st_mode=(S_IFREG | 0o755), st_ctime=now, st_mtime=now,
-                        st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
-        
+                    st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
+
     def split_chunks(self):
-        f = open(os.path.join(self.mpt, self.assembled), 'r')
+        f = open(os.path.join(self.mpt, self.a_f_name), 'r')
         for chunk in self.head_chunk.chunk_meta.chunks:
             with open(os.path.join(self.mpt, chunk.name), 'w') as ch:
                 buf = f.read(constants.CHUNK_SIZE)
@@ -168,16 +130,11 @@ class FileObject:
 
         buf = f.read(constants.CHUNK_SIZE)
         while buf != "":
-            print "buf", buf
             chunk_name = self.head_chunk.chunk_meta.add_chunk()
             with open(os.path.join(self.mpt, chunk_name), 'w') as ch:
                 ch.write(buf)
                 ch.flush()
             buf = f.read(constants.CHUNK_SIZE)
-
-    def get_parent(self):
-        directory, name = os.path.split(self.file_path)
-        self.parent = FileObject(self.mpt, directory, self.cloud)
 
     def remove(self):
         self.head_chunk.fetch()
@@ -188,7 +145,7 @@ class FileObject:
             for client_id in chunk.accounts:
                 self.cloud.remove(chunk.name, client_id)
 
-        os.remove(os.path.join(self.mpt,self.head_chunk.chunk_meta.name))
+        os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
         for client_id in self.head_chunk.chunk_meta.accounts:
             self.cloud.remove(self.head_chunk.chunk_meta.name, client_id)
 

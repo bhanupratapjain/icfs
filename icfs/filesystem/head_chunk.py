@@ -1,13 +1,16 @@
 import json
-import os
 import uuid
+
+import os
 
 import constants
 import file_handler
-from chunk_meta import ChunkMeta
 from icfs.cloudapi.exceptions import CloudIOError
+from icfs.filesystem.chunk_meta import ChunkMeta
+from icfs.logger import class_decorator, logger
 
 
+@class_decorator(logger)
 class HeadChunk:
     def __init__(self, mpt, name, cloud, accounts):
         self.mpt = mpt
@@ -27,24 +30,18 @@ class HeadChunk:
 
     # Should be called after fetch()
     def load(self):
-        print "hc load name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "start")
-        print "In load"
-        with open(os.path.join(self.mpt, self.name)) as hc:
-            hc_obj = json.load(hc)
-            self.size = hc_obj['size']
-            cm_data = hc_obj["chunk_meta"]
-            self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], self.cloud,
-                                        cm_data["accounts"])
-            self.chunk_meta.fetch()
-            self.chunk_meta.load()
-        print "hc load name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "end")
-
+        if self.chunk_meta is None:
+            with open(os.path.join(self.mpt, self.name)) as hc:
+                hc_obj = json.load(hc)
+                self.size = hc_obj['size']
+                cm_data = hc_obj["chunk_meta"]
+                self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], self.cloud,
+                                            cm_data["accounts"])
+                self.chunk_meta.fetch()
+                self.chunk_meta.load()
 
     def fetch(self):
-        print "hc fetch name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "start")
-        print "path in fetch", os.path.join(self.mpt, self.name)
         if not os.path.exists(os.path.join(self.mpt, self.name)):
-            print "In if fetch"
             for acc in self.accounts:
                 try:
                     self.cloud.pull(self.name, acc)
@@ -52,8 +49,6 @@ class HeadChunk:
                 except CloudIOError as cie:
                     print "Except fetching head chunk from account{},{}".format(
                         acc, cie.message)
-        print "hc fetch name[{}] mpt[{}] [{}] ".format(self.name, self.mpt, "end")
-
 
     def append_data(self, data):
         self.chunk_meta.append_data(data)

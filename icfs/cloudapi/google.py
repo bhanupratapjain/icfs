@@ -22,8 +22,7 @@ class GDrive:
         self.tmp = tmp_location
         self.settings = settings_file
 
-    @staticmethod
-    def __init_cred_dir():
+    def __init_cred_dir(self):
         loc = os.path.join(DATA_ROOT, CLOUD_CREDENTIAL_DIR_NAME)
         if not os.path.isdir(loc):
             os.mkdir(loc)

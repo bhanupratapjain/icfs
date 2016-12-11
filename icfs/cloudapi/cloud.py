@@ -3,16 +3,17 @@ import os
 from icfs.cloudapi.constants import CLOUD_TEMP_DIR_NAME
 from icfs.cloudapi.google import GDrive
 from icfs.global_constants import DATA_ROOT
+from icfs.logger import class_decorator, logger
 
 
+@class_decorator(logger)
 class Cloud:
     def __init__(self, gdrive_settings):
         self.gdrive_settings = gdrive_settings
         self.clients = {}
         self.tmp = self.__init_tmp_dir()
 
-    @staticmethod
-    def __init_tmp_dir():
+    def __init_tmp_dir(self):
         loc = os.path.join(DATA_ROOT, CLOUD_TEMP_DIR_NAME)
         if not os.path.isdir(loc):
             os.mkdir(loc)
