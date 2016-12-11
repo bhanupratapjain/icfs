@@ -1,17 +1,18 @@
 import json
-import os
 import random
 import time
 from errno import ENOENT
-from stat import S_IFDIR
 
+import os
 from fuse import LoggingMixIn, Operations, FUSE, FuseOSError
+from stat import S_IFDIR
 
 import icfs.filesystem.constants as constants
 from icfs.cloudapi.cloud import Cloud
 from icfs.filesystem.constants import CLOUD_ACCOUNTS_FILE_NAME
 from icfs.filesystem.exceptions import ICFSError
 from icfs.filesystem.file_object import FileObject
+from icfs.filesystem.head_chunk import HeadChunk
 from icfs.global_constants import PROJECT_ROOT, DATA_ROOT
 
 
@@ -25,7 +26,7 @@ class FileSystem(LoggingMixIn, Operations):
         self.root = None  # FileObject
         self.cwd = None  # FileObject
         self.accounts = []
-        self.open_files = dict() # {k-fd, v- icfs fo}
+        self.open_files = dict()  # {k-fd, v- icfs fo}
         self.fd = 0
         self.__create_cloud()
 
@@ -133,7 +134,7 @@ class FileSystem(LoggingMixIn, Operations):
         fo = FileObject(self.meta, path, self.cloud)
         fo.create([p_account, s_account])
         print "************ Create FS HC {}, CM{}, CHUNKS{}".format(fo.head_chunk.name, fo.head_chunk.chunk_meta.name,
-                                                                 len(fo.head_chunk.chunk_meta.chunks))
+                                                                    len(fo.head_chunk.chunk_meta.chunks))
         try:
             print "************* pushing [start]"
             fo.push()
@@ -171,15 +172,97 @@ class FileSystem(LoggingMixIn, Operations):
             fo = self.__create(path)
         else:
             fo = FileObject(self.meta, path, self.cloud)
+        return self.__open(fo, flags)
 
+    @staticmethod
+    def __get_py_flags(flags):
         if flags == os.O_APPEND:
-            fo.open('a')
+            return 'a'
         elif flags == os.O_RDONLY:
-            fo.open('r')
+            return 'r'
         elif flags == os.O_WRONLY:
-            fo.open('w')
+            return 'w'
         elif flags == os.O_RDWR:
-            fo.open("r+")
+            return "r+"
+
+    # Does not return the root
+    @staticmethod
+    def __get_parent_list(path):
+        parents = path.split(os.sep)
+        print "******splitting parents ", parents
+        return filter(lambda x: x is not '', parents)
+
+    def __search_hc(self, py_file, file_name):
+        for line in py_file:
+            if line.startswith(file_name):
+                hc_data = line.split()
+                return hc_data
+
+    def __find_head_chunk(self, fo):
+        if fo.head_chunk is None:
+            print "fo path %s" % fo.file_path
+
+            # If path is root
+            if fo.file_path == os.sep:
+                print "*************root found"
+                print self.root
+                print self.root.head_chunk
+                fo.head_chunk = self.root.head_chunk
+                return
+
+            # Get Split File Paths
+            split_path_list = self.__get_parent_list(fo.file_path)  # Everything after the root
+            parents = split_path_list[0:-1]  # Remove the file_name which is the last value
+            file_name = split_path_list[-1]
+
+            print "******** parents ", split_path_list
+
+            # If Path is inside root
+            # 1. Assemble root file
+            # 2. Search for file_name in assembled file
+            # 3. Update HC in FO
+            if len(parents) == 0:
+                root_file_name = self.root.assemble()
+                with open(os.path.join(self.meta, root_file_name)) as rf:
+                    file_hc_data = self.__search_hc(rf, file_name)
+                    fo.head_chunk = HeadChunk(self.mnt, file_hc_data[1],
+                                              self.cloud, file_hc_data[2:])
+                    return
+            # If Path is not root.
+            # 1. Search in root only for 1st parent
+            # 2. Open returned parend
+            # 3. Search again in opened parent
+            # 4. Continue 2-3 till the last parent.
+            # 5. Search for file_name in last parent
+            # 6. Update HC in FO
+            parent_fo = None
+            parent_file_path = "/"
+            for i, p in enumerate(parents):
+                parent_file_path = os.path.join(parent_file_path, p)
+                if i == 0:
+                    root_file_name = self.root.assemble()
+                    with open(os.path.join(self.meta, root_file_name)) as rf:
+                        hc_data = self.__search_hc(rf, p)
+                else:
+                    hc_data = self.__search_hc(parent_fo.py_file, p)
+                    parent_fo.close()
+
+                parent_fo = FileObject(self.mnt, parent_file_path, self.cloud)
+                parent_fo.head_chunk.name = hc_data[1]
+                parent_fo.head_chunk.accounts = hc_data[2:]
+                parent_fo.open("r")
+
+            file_hc_data = self.__search_hc(parent_fo.py_file, file_name)
+            fo.head_chunk = HeadChunk(self.mnt, file_hc_data[1],
+                                      self.cloud, file_hc_data[2:])
+            return
+
+    def __open(self, fo, flags):
+        py_flags = self.__get_py_flags(flags)
+        self.__find_head_chunk(fo)
+        print "**********head chunk found"
+        fo.open(py_flags)
+        print "*********open finished"
         print "after open"
         self.fd += 1
         print "Test"
@@ -195,7 +278,7 @@ class FileSystem(LoggingMixIn, Operations):
         print "readdir", path
         try:
             fo = FileObject(self.meta, path, self.cloud)
-            fo.open('r')
+            self.__open(fo, os.O_RDONLY)
             files = []
             for line in fo.py_file:
                 files.append(line.split()[0])

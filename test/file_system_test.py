@@ -1,10 +1,10 @@
 import os
+
 from icfs.filesystem.filesystem import FileSystem
 from icfs.global_constants import DATA_ROOT
 
 
 def remove_files(fs):
-
     #  Delete All Files From Account
     for acc in fs.accounts:
         fs.cloud.remove_all(acc)
@@ -16,14 +16,19 @@ def remove_files(fs):
 
 
 if __name__ == "__main__":
+    # print "/a/b.txt".split("/")
+    # print os.path.join("","a")
+    # print os.path.join("/","a")
+
+
     fs = FileSystem(os.path.join(DATA_ROOT, "mnt"))
-
+    #
     remove_files(fs)
-
+    #
     # fs.add_account()
     # fs.add_account()
     # fs.add_account()
-
+    #
     fs.start()
     # fs.create("/test.txt", None)
     # fs.create("/test.txt", "r+")

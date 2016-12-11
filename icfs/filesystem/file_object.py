@@ -72,7 +72,7 @@ class FileObject:
     def open(self, flags):
         # TODO
         # Figure out Head Chunk
-        self.__find_head_chunk()
+        # self.__find_head_chunk()
         self.head_chunk.fetch()
         self.head_chunk.load()
         self.assembled = self.assemble()
