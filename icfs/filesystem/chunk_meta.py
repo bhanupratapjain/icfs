@@ -34,6 +34,7 @@ class ChunkMeta:
                 if not os.path.exists(self.mpt + name):
                     clist.append(chunk)
             self.__fetch_chunks(clist)
+            self.chunks = []
             for chunk in chunks_list:
                 self.chunks.append(
                     Chunk(chunk["checksum"], self.mpt, chunk["name"],
@@ -54,7 +55,15 @@ class ChunkMeta:
         return self.chunks
 
     def __fetch_chunks(self, clist):
-        pass  # Fetch All Chunks in List
+        for chunk in clist:
+            if not os.path.exists(os.path.join(self.mpt, chunk['name'])):
+                for acc in self.accounts:
+                    try:
+                        self.cloud.pull(chunk['name'], acc)
+                        break
+                    except CloudIOError as cie:
+                        print "Except fetching chunk meta from account{},{}".format(
+                            acc, cie.message)
 
     def __fetch_chunk_meta(self):
         pass

@@ -15,6 +15,7 @@ class HeadChunk:
     def __init__(self, mpt, name, cloud, accounts):
         self.mpt = mpt
         self.name = name
+        self.type = constants.FILE
         self.size = 0
         self.chunk_meta_name = None
         self.chunk_meta = None
@@ -31,16 +32,19 @@ class HeadChunk:
     # Should be called after fetch()
     def load(self):
         if self.chunk_meta is None:
+            hc_obj = None
             with open(os.path.join(self.mpt, self.name)) as hc:
                 hc_obj = json.load(hc)
-                self.size = hc_obj['size']
-                cm_data = hc_obj["chunk_meta"]
-                self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], self.cloud,
-                                            cm_data["accounts"])
-                self.chunk_meta.fetch()
-                self.chunk_meta.load()
+            self.type = hc_obj['type']
+            self.size = hc_obj['size']
+            cm_data = hc_obj["chunk_meta"]
+            self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], self.cloud,
+                                        cm_data["accounts"])
+            self.chunk_meta.fetch()
+            self.chunk_meta.load()
 
     def fetch(self):
+        print "fetch", os.path.join(self.mpt,self.name)
         if not os.path.exists(os.path.join(self.mpt, self.name)):
             for acc in self.accounts:
                 try:
@@ -55,6 +59,7 @@ class HeadChunk:
 
     def write_file(self):
         data = dict()
+        data['type'] = self.type
         data['size'] = self.size
         data['chunk_meta'] = {
             'name': self.chunk_meta.name,
