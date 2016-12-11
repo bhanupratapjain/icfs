@@ -3,6 +3,7 @@ from __future__ import print_function
 import threading
 
 import os
+from googleapiclient.errors import HttpError
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 from pydrive.files import ApiRequestError, FileNotUploadedError, FileNotDownloadableError
@@ -88,6 +89,8 @@ class GDrive:
             c_file.SetContentFile(os.path.join(self.tmp, filename))
             c_file.Upload()
         except ApiRequestError as e:
+            raise CloudIOError(e.message)
+        except HttpError as e:
             raise CloudIOError(e.message)
 
     def remove(self, filename):

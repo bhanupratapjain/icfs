@@ -112,9 +112,12 @@ class FileSystem(LoggingMixIn, Operations):
         else:
             print "Before getattr"
             fo = FileObject(self.meta, path, self.cloud)
-            d = fo.getattr()
-            print "After getattr", d
-            if d == {}:
+            try:
+                self.__find_head_chunk(fo)
+                d = fo.getattr()
+                print "After getattr", d
+            except ICFSError as err:
+                print err.message
                 raise FuseOSError(ENOENT)
             return d
 
@@ -129,10 +132,12 @@ class FileSystem(LoggingMixIn, Operations):
         print("mkdir", path)
 
     def __create(self, path):
+        print "file system create [start] ", path
         p_account = self.__get_random_account()
         s_account = self.__get_random_account(p_account)
         fo = FileObject(self.meta, path, self.cloud)
         fo.create([p_account, s_account])
+        fo.parent = self.__update_parend(path)
         print "************ Create FS HC {}, CM{}, CHUNKS{}".format(fo.head_chunk.name, fo.head_chunk.chunk_meta.name,
                                                                     len(fo.head_chunk.chunk_meta.chunks))
         try:
@@ -140,11 +145,26 @@ class FileSystem(LoggingMixIn, Operations):
             fo.push()
             fo.parent.push()
             print "************* pushing [end]"
-            # self.__update_cwd(fo.head_chunk.name, fo.head_chunk.accounts)
         except ICFSError as ie:
             print
             "Error in Pushing at FileSystem Layer. {}".format(ie.message)
+        print "file system create [end] ", path
         return fo
+
+    def __update_parend(self, file_path):
+        print "file system "
+        directory, name = os.path.split(file_path)
+        parent_fo = FileObject(self.meta, directory, self.cloud)
+        self.__open(parent_fo, os.O_APPEND)
+        wr_str = "{} {}".format(name, parent_fo.head_chunk.name)
+        for acc in parent_fo.head_chunk.accounts:
+            print "*********Apending Accounts %s" % acc
+            wr_str += " {}".format(acc)
+        wr_str += "\n"
+        print "***********Appending String %s" % wr_str
+        parent_fo.write(wr_str, 0)
+        parent_fo.close()
+        return parent_fo
 
     # 1.assembles chunk file for self.cwd
     # 2.appends the newly created file to the assembled file
@@ -180,7 +200,7 @@ class FileSystem(LoggingMixIn, Operations):
             return 'a'
         elif flags == os.O_RDONLY:
             return 'r'
-        elif flags == os.O_WRONLY:
+        elif flags == os.O_WRONLY or flags == os.O_WRONLY | os.O_CREAT:
             return 'w'
         elif flags == os.O_RDWR:
             return "r+"
@@ -190,15 +210,19 @@ class FileSystem(LoggingMixIn, Operations):
     def __get_parent_list(path):
         parents = path.split(os.sep)
         print "******splitting parents ", parents
-        return filter(lambda x: x is not '', parents)
+        return filter(lambda x: x != '', parents)
 
+    # Throws ICFSIOError
     def __search_hc(self, py_file, file_name):
         for line in py_file:
             if line.startswith(file_name):
                 hc_data = line.split()
                 return hc_data
+        raise ICFSError("Head Chunk Not Found")
 
+    # Throws ICFSIOError
     def __find_head_chunk(self, fo):
+        print "file system find head chunk [start]", fo.file_path
         if fo.head_chunk is None:
             print "fo path %s" % fo.file_path
 
@@ -227,6 +251,7 @@ class FileSystem(LoggingMixIn, Operations):
                     file_hc_data = self.__search_hc(rf, file_name)
                     fo.head_chunk = HeadChunk(self.mnt, file_hc_data[1],
                                               self.cloud, file_hc_data[2:])
+                    print "file system find head chunk [root end]", fo.file_path
                     return
             # If Path is not root.
             # 1. Search in root only for 1st parent
@@ -253,11 +278,14 @@ class FileSystem(LoggingMixIn, Operations):
                 parent_fo.open("r")
 
             file_hc_data = self.__search_hc(parent_fo.py_file, file_name)
+
             fo.head_chunk = HeadChunk(self.mnt, file_hc_data[1],
                                       self.cloud, file_hc_data[2:])
+            print "file system find head chunk [end]", fo.file_path
             return
 
     def __open(self, fo, flags):
+        print "file system open [start]", fo.file_path
         py_flags = self.__get_py_flags(flags)
         self.__find_head_chunk(fo)
         print "**********head chunk found"
@@ -268,6 +296,7 @@ class FileSystem(LoggingMixIn, Operations):
         print "Test"
         self.open_files[self.fd] = fo
         print "fd", self.fd
+        print "file system open [end]", fo.file_path
         return self.fd
 
     def read(self, path, length, offset, fh):
