@@ -161,7 +161,7 @@ class FileSystem(Operations):
         # if the file_name is a path traverse accordingly and finally append to the data
         # Push these files using cloudapi
         # return success
-        print "open", path
+        print "open path [{}] flags[{}]".format(path, flags)
         if flags == os.O_WRONLY | os.O_CREAT:
             fo = self.__create(path)
         else:
@@ -169,14 +169,17 @@ class FileSystem(Operations):
         return self.__open(fo, flags)
 
     def __get_py_flags(self, flags):
+        py_flag = None
         if flags == os.O_APPEND:
-            return 'a'
+            py_flag = 'a'
         elif flags == os.O_RDONLY:
-            return 'r'
+            py_flag = 'r'
         elif flags == os.O_WRONLY or flags == os.O_WRONLY | os.O_CREAT:
-            return 'w'
+            py_flag = 'w'
         elif flags == os.O_RDWR:
-            return "r+"
+            py_flag = "r+"
+        print "Converting [{}] to [{}]".format(flags, py_flag)
+        return py_flag
 
     # Does not return the root
     def __get_parent_list(self, path):
@@ -313,6 +316,7 @@ class FileSystem(Operations):
     def write(self, path, data, offset, fh):
         fo = self.open_files[fh]
         bytes = fo.write(data, offset)
+        fo.push()
         return bytes
 
 

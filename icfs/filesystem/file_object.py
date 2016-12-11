@@ -41,8 +41,9 @@ class FileObject:
             self.head_chunk.create()  # Create HeadChunk, ChunkMeta
             # self.head_chunk.chunk_meta.add_chunk()  # Add a Chunk and append ChunkMeta
             chunk_data = ".  " + constants.ROOT_HC + "\n"
-            self.head_chunk.chunk_meta.add_chunk(chunk_data)  # Add a Chunk and append ChunkMeta
-            # self.a_f_name = self.assemble()
+            self.open("w")
+            self.write(chunk_data , 0)
+            # self.head_chunk.chunk_meta.add_chunk(chunk_data)  # Add a Chunk and append ChunkMeta
             # self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), "w+")
             # with open(os.path.join(self.mpt, self.a_f_name), "w") as f:
             #     f.write(".  " + constants.ROOT_HC + "\n")
@@ -65,7 +66,7 @@ class FileObject:
         self.head_chunk.fetch()
         self.head_chunk.load()
         self.a_f_name = self.assemble()
-        print "opening afile [%s][%s]"%(self.a_f_name,flags)
+        print "opening afile [%s][%s]" % (self.a_f_name, flags)
         self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), flags)
 
     def close(self):
@@ -82,7 +83,6 @@ class FileObject:
 
     # throws ICFS error
     def push(self):
-        print  "********************pushing"
         obj_arr = [self.head_chunk, self.head_chunk.chunk_meta]
         push_chunks, remove_chunks = self.rsync_chunks()
         print push_chunks
@@ -93,7 +93,7 @@ class FileObject:
             acc_push_count = 0
             for acc in obj.accounts:
                 try:
-                    print "**********obj {} acc {}".format(obj.name, acc)
+                    print "Pushing obj {} to account {}".format(obj.name, acc)
                     self.cloud.push(obj.name, acc)
                     acc_push_count += 1
                 except CloudIOError as cie:
@@ -103,14 +103,15 @@ class FileObject:
         for chunk in remove_chunks:
             for acc in chunk.accounts:
                 try:
+                    print "Removing obj {} from account {}".format(obj.name, acc)
                     self.cloud.remove(chunk.name, acc)
                 except CloudIOError as cie:
                     print "Error removing from account {} {}".format(acc, cie.message)
-            os.remove(os.path.join(self.mpt,chunk.name))
+            os.remove(os.path.join(self.mpt, chunk.name))
 
     # should return chunk objects
     def rsync_chunks(self):
-        assmbl  = False
+        assmbl = False
         chck_weak = []
         chck_strong = []
         for chunk in self.head_chunk.chunk_meta.chunks:
@@ -159,8 +160,8 @@ class FileObject:
                 with open(os.path.join(self.mpt, chunk.name), "r") as chf:
                     buf = chf.read(constants.CHUNK_SIZE)
                     of.write(buf)
-                # TODO: Uncomment when Rsync is impl.
-                # os.remove(os.path.join(self.mpt, chunk.name))
+                    # TODO: Uncomment when Rsync is impl.
+                    # os.remove(os.path.join(self.mpt, chunk.name))
         return local_file_name
 
     def write(self, data, offset):
