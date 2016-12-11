@@ -21,23 +21,15 @@ class FileObject:
         self.cloud = cloud
 
     def create(self, accounts):
+        print "file object create [start]", self.file_path
         file_head_chunk_name = constants.HC_PREFIX + str(uuid.uuid4())
         self.head_chunk = HeadChunk(self.mpt, file_head_chunk_name, self.cloud,
                                     accounts)
         self.head_chunk.create()
         print "************ Create FO HC {}, CM{}, CHUNKS{}".format(self.head_chunk.name, self.head_chunk.chunk_meta.name,
                                                                  len(self.head_chunk.chunk_meta.chunks))
-        directory, name = os.path.split(self.file_path)
-        self.parent = FileObject(self.mpt, directory, self.cloud)
-        self.parent.open('a')
-        wr_str = "{} {}".format(name, self.head_chunk.name)
-        for acc in self.head_chunk.accounts:
-            print "*********Apending Accounts %s" % acc
-            wr_str += " {}".format(acc)
-        wr_str += "\n"
-        print "***********Appending String %s" % wr_str
-        self.parent.write(wr_str, 0)
-        self.parent.close()
+
+        print "file object create [end] ", self.file_path
 
     def create_root(self, accounts):
         file_head_chunk_name = constants.ROOT_HC
@@ -156,18 +148,13 @@ class FileObject:
 
     def getattr(self):
         print "In getattr"
-        self.__find_head_chunk()
         print "After find hc"
-        if self.head_chunk is not None:
-            self.head_chunk.fetch()
-            self.head_chunk.load()
-            print "chunk_meta", self.head_chunk.chunk_meta.name
-            now = time.time()
-            return dict(st_mode=(S_IFREG | 0o755), st_ctime=now, st_mtime=now,
+        self.head_chunk.fetch()
+        self.head_chunk.load()
+        now = time.time()
+        return dict(st_mode=(S_IFREG | 0o755), st_ctime=now, st_mtime=now,
                         st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
-        else:
-            return {}
-
+        
     def split_chunks(self):
         f = open(os.path.join(self.mpt, self.assembled), 'r')
         for chunk in self.head_chunk.chunk_meta.chunks:
