@@ -1,11 +1,11 @@
 import json
+import os
 import random
 import time
 from errno import ENOENT
-
-import os
-from fuse import LoggingMixIn, Operations, FUSE, FuseOSError
 from stat import S_IFDIR
+
+from fuse import Operations, FUSE, FuseOSError
 
 import icfs.filesystem.constants as constants
 from icfs.cloudapi.cloud import Cloud
@@ -234,8 +234,10 @@ class FileSystem(Operations):
                 return
 
             # Get Split File Paths
-            split_path_list = self.__get_parent_list(fo.file_path)  # Everything after the root
-            parents = split_path_list[0:-1]  # Remove the file_name which is the last value
+            split_path_list = self.__get_parent_list(
+                fo.file_path)  # Everything after the root
+            parents = split_path_list[
+                      0:-1]  # Remove the file_name which is the last value
             file_name = split_path_list[-1]
 
             print "******** parents ", split_path_list
@@ -354,6 +356,25 @@ class FileSystem(Operations):
     def unlink(self, path):
         print "unlink", path
         fo = FileObject(self.meta, path, self.cloud)
+        directory, file = os.path.split(path)
+        parent = FileObject(self.meta, directory, self.cloud)
+        self.__open(path, os.O_RDONLY)
+        files = []
+        for line in parent.py_file:
+            if not line.startswith(file):
+                files.append(tuple(line.split()))
+
+        print "files", files
+        parent.py_file.close()
+        parent.py_file = open(os.path.join(self.meta, parent.assembled), 'w')
+
+        for line in files:
+            parent.write(line[0] + " " + line[1] + "\n", 0)
+
+        parent.py_file.flush()
+        parent.close()
+
+        self.__find_head_chunk(fo)
         fo.remove()
 
     def utimens(self, path, times=None):

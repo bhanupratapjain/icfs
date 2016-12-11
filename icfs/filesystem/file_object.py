@@ -1,7 +1,6 @@
+import os
 import time
 import uuid
-
-import os
 from stat import S_IFREG
 
 import constants
@@ -91,7 +90,8 @@ class FileObject:
         # TODO change the following to push all files  and do that in a separate thread
         for obj in obj_arr:
             acc_push_count = 0
-            print "Pushing Obj {} with {} accounts".format(obj.name, len(obj.accounts))
+            print "Pushing Obj {} with {} accounts".format(obj.name,
+                                                           len(obj.accounts))
             for acc in obj.accounts:
                 try:
                     self.cloud.push(obj.name, acc)
@@ -180,24 +180,18 @@ class FileObject:
         self.parent = FileObject(self.mpt, directory, self.cloud)
 
     def remove(self):
-        self.__find_head_chunk()
         self.head_chunk.fetch()
         self.head_chunk.load()
-        directory, file = os.path.split(self.file_path)
-        self.parent.open('r')
-        files = []
-        for line in self.parent.fh:
-            if not line.startswith(file):
-                files.append(tuple(line.split()))
 
-        print "files", files
-        self.parent.fh.close()
-        self.parent.fh = open(os.path.join(self.mpt, self.parent.ass_fname),
-                              'w')
-        for line in files:
-            self.parent.write(line[0] + " " + line[1] + "\n", 0)
+        for chunk in self.head_chunk.chunk_meta.chunks:
+            os.remove(os.path.join(self.mpt, chunk.name))
+            for client_id in chunk.accounts:
+                self.cloud.remove(chunk.name, client_id)
 
-        self.parent.fh.flush()
-        self.parent.close()
+        os.remove(os.path.join(self.mpt,self.head_chunk.chunk_meta.name))
+        for client_id in self.head_chunk.chunk_meta.accounts:
+            self.cloud.remove(self.head_chunk.chunk_meta.name, client_id)
 
-        self.head_chunk.remove()
+        os.remove(os.path.join(self.mpt, self.head_chunk.name))
+        for client_id in self.head_chunk.accounts:
+            self.cloud.remove(self.head_chunk.name, client_id)
