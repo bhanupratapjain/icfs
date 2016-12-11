@@ -18,7 +18,7 @@ from icfs.global_constants import PROJECT_ROOT, DATA_ROOT
 
 # TODO::
 # Removed Fuse Inheritance to work on Windows
-class FileSystem(LoggingMixIn, Operations):
+class FileSystem(Operations):
     # class FileSystem():
     def __init__(self, mpt):
         self.mnt = mpt
@@ -67,7 +67,8 @@ class FileSystem(LoggingMixIn, Operations):
     def add_account(self):
         account_id = self.cloud.add_gdrive()
         self.accounts.append(account_id)
-        with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME), "r+") as af:
+        with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME),
+                  "r+") as af:
             data = json.load(af)
             data["accounts"].append(account_id)
             af.seek(0)
@@ -102,7 +103,6 @@ class FileSystem(LoggingMixIn, Operations):
         print "getattr", path
         now = time.time()
         parent, file = os.path.split(path)
-        print "Hello"
         if parent == "/" and file == "":
             return dict(st_mode=(S_IFDIR | 0o755), st_ctime=now, st_mtime=now,
                         st_atime=now, st_nlink=2)
@@ -110,7 +110,6 @@ class FileSystem(LoggingMixIn, Operations):
         elif file.startswith("_") or file == ".DS_Store":
             raise FuseOSError(ENOENT)
         else:
-            print "Before getattr"
             fo = FileObject(self.meta, path, self.cloud)
             d = fo.getattr()
             print "After getattr", d
@@ -119,7 +118,7 @@ class FileSystem(LoggingMixIn, Operations):
             return d
 
     def getxattr(self, path, name, position=0):
-        print "getxattr", path
+        print "getxattr", name, path
         return ''
 
     def listxattr(self, path):
@@ -265,12 +264,12 @@ class FileSystem(LoggingMixIn, Operations):
         print "*********open finished"
         print "after open"
         self.fd += 1
-        print "Test"
         self.open_files[self.fd] = fo
         print "fd", self.fd
         return self.fd
 
     def read(self, path, length, offset, fh):
+        print "read", path
         fo = self.open_files[fh]
         return fo.read(length, offset)
 
@@ -283,7 +282,6 @@ class FileSystem(LoggingMixIn, Operations):
             for line in fo.py_file:
                 files.append(line.split()[0])
             fo.close()
-            print "direct", files
             return files
             # return ["hello"]
         except Exception:
@@ -326,6 +324,8 @@ class FileSystem(LoggingMixIn, Operations):
 
     def unlink(self, path):
         print "unlink", path
+        fo = FileObject(self.meta, path, self.cloud)
+        fo.remove()
 
     def utimens(self, path, times=None):
         pass

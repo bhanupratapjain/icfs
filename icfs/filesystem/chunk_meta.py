@@ -65,6 +65,12 @@ class ChunkMeta:
                 Chunk(None, self.mpt, self.name + len(self.chunks), None))
         self.chunks[-1].append(data)
 
+    def remove(self):
+        for chunk in self.chunks:
+            chunk.remove()
+
+        os.remove(os.path.join(self.mpt,self.name))
+
     def write_file(self):
         data = dict()
         data['chunks'] = []

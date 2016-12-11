@@ -11,3 +11,6 @@ class Chunk:
 
     def create(self):
         open(os.path.join(self.mpt, self.name), 'w').close()
+
+    def remove(self):
+        os.remove(os.path.join(self.mpt,self.name))

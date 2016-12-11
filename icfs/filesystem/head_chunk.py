@@ -12,6 +12,7 @@ class HeadChunk:
     def __init__(self, mpt, name, cloud, accounts):
         self.mpt = mpt
         self.name = name
+        self.size = 0
         self.chunk_meta_name = None
         self.chunk_meta = None
         self.cloud = cloud
@@ -29,6 +30,7 @@ class HeadChunk:
         print "In load"
         with open(os.path.join(self.mpt, self.name)) as hc:
             hc_obj = json.load(hc)
+            self.size = hc_obj['size']
             cm_data = hc_obj["chunk_meta"]
             self.chunk_meta = ChunkMeta(self.mpt, cm_data["name"], self.cloud,
                                         cm_data["accounts"])
@@ -50,8 +52,13 @@ class HeadChunk:
     def append_data(self, data):
         self.chunk_meta.append_data(data)
 
+    def remove(self):
+        self.chunk_meta.remove()
+        os.remove(os.path.join(self.mpt, self.name))
+
     def write_file(self):
         data = dict()
+        data['size'] = self.size
         data['chunk_meta'] = {
             'name': self.chunk_meta.name,
             'accounts': self.accounts
