@@ -133,12 +133,13 @@ class FileSystem(Operations):
         fo = FileObject(self.meta, path, self.cloud)
         fo.create(constants.DIRECTORY, [p_account, s_account])
         fo.parent = self.__update_parent(fo)
-        fo.open('w')
         self.__increment_link(fo.file_path)
-        fo.a_f_py_obj.write(".  " + fo.head_chunk.name + "  " + (
-            "    ".join(fo.head_chunk.accounts) + "\n"))
-        fo.a_f_py_obj.write("..  " + fo.parent.head_chunk.name + "  " + (
-            "    ".join(fo.parent.head_chunk.accounts) + "\n"))
+        fo.open('w')
+        data = ".  " + fo.head_chunk.name + "  " + (
+            "    ".join(fo.head_chunk.accounts) + "\n")
+        data += "..  " + fo.parent.head_chunk.name + "  " + (
+            "    ".join(fo.parent.head_chunk.accounts) + "\n")
+        fo.write(data, 0)
         self.__close(fo)
 
     def __create(self, path):
@@ -285,9 +286,11 @@ class FileSystem(Operations):
         path = fo.file_path
         links = self.open_file_names[path]
         if links - 1 == 0:
+            print "Doing Delete Close", links, path
             fo.close(True)
             self.open_file_names.pop(path)
         else:
+            print "Doing Normal Close", links, path
             fo.close()
             self.open_file_names[path] -= 1
 
