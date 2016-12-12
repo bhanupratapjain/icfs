@@ -39,6 +39,11 @@ class Cloud:
         self.clients[client_id].push(filename)
 
     # Raises CloudIOError
+    def push_all(self, filelist, clientid):
+        self.clients[clientid].push_all(filelist)
+
+
+    # Raises CloudIOError
     def remove(self, filename, client_id):
         self.clients[client_id].remove(filename)
 

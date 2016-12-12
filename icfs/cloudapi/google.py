@@ -112,6 +112,18 @@ class GDrive:
         except ApiRequestError as e:
             raise CloudIOError(e.message)
 
+    def push_all(self,filelist):
+        try:
+            threads = []
+            for fname in filelist:
+                th = threading.Thread(target=self.push(),args=(fname,))
+                th.start()
+                threads.append(th)
+            for th in threads:
+                th.join()
+        except ApiRequestError as e:
+            raise CloudIOError(e.message)
+
     def pull(self, filename):
         try:
             c_file = self.__get_file(filename)

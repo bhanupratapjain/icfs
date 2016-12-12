@@ -94,18 +94,30 @@ class FileObject:
         print remove_chunks
         obj_arr.extend(push_chunks)
         # TODO change the following to push all files  and do that in a separate thread
+        acc_files_dict = dict()
         for obj in obj_arr:
-            acc_push_count = 0
             for acc in obj.accounts:
-                try:
-                    print "Pushing obj {} to account {}".format(obj.name, acc)
-                    self.cloud.push(obj.name, acc)
-                    acc_push_count += 1
-                except CloudIOError as cie:
-                    print "Error pushing into primary {} {}".format(obj.name,
-                                                                    cie.message)
-            if acc_push_count < 1:
-                raise ICFSError("error while push")
+                if acc_files_dict[acc] is None:
+                    acc_files_dict[acc] = []
+                acc_files_dict[acc].append(obj.name)
+
+        for key, value in acc_files_dict.iteritems():
+            print "Pushing files {} for account {}".format(value, key)
+            self.cloud.push_all(key, value)
+
+        # for obj in obj_arr:
+        #     acc_push_count = 0
+        #     for acc in obj.accounts:
+        #         try:
+        #             print "Pushing obj {} to account {}".format(obj.name, acc)
+        #             self.cloud.push(obj.name, acc)
+        #             acc_push_count += 1
+        #         except CloudIOError as cie:
+        #             print "Error pushing into primary {} {}".format(obj.name,
+        #                                                             cie.message)
+        #     if acc_push_count < 1:
+        #         raise ICFSError("error while push")
+
         for chunk in remove_chunks:
             for acc in chunk.accounts:
                 try:
@@ -167,8 +179,8 @@ class FileObject:
                     with open(os.path.join(self.mpt, chunk.name), "r") as chf:
                         buf = chf.read(constants.CHUNK_SIZE)
                         of.write(buf)
-                    # TODO: Uncomment when Rsync is impl.
-                    #os.remove(os.path.join(self.mpt, chunk.name))
+                        # TODO: Uncomment when Rsync is impl.
+                        # os.remove(os.path.join(self.mpt, chunk.name))
         return local_file_name
 
     def write(self, data, offset):
@@ -177,13 +189,13 @@ class FileObject:
         ret = self.a_f_py_obj.tell() - pos
         self.head_chunk.size += ret
         self.a_f_py_obj.flush()
-        #self.split_chunks()
-        #try:
+        # self.split_chunks()
+        # try:
         #    self.push()  # Should be moved to write
-        #except ICFSError as ie:
+        # except ICFSError as ie:
         #    print
         #    "Error in Pushing at FileSystem Layer. {}".format(ie.message)
-        #for chunk in self.head_chunk.chunk_meta.chunks:
+        # for chunk in self.head_chunk.chunk_meta.chunks:
         #    os.remove(os.path.join(self.mpt, chunk.name))
         return ret
 
