@@ -1,30 +1,21 @@
-import os
-
-from icfs.cloudapi.constants import CLOUD_TEMP_DIR_NAME
 from icfs.cloudapi.google import GDrive
-from icfs.global_constants import DATA_ROOT
 
 
 # @class_decorator(logger)
 class Cloud:
-    def __init__(self, gdrive_settings):
+    def __init__(self, gdrive_settings, tmp, creds):
         self.gdrive_settings = gdrive_settings
         self.clients = {}
-        self.tmp = self.__init_tmp_dir()
-
-    def __init_tmp_dir(self):
-        loc = os.path.join(DATA_ROOT, CLOUD_TEMP_DIR_NAME)
-        if not os.path.isdir(loc):
-            os.mkdir(loc)
-        return loc
+        self.creds = creds
+        self.tmp = tmp
 
     def restore_gdrive(self, client_id):
-        g_drive = GDrive(self.tmp, self.gdrive_settings)
+        g_drive = GDrive(self.tmp, self.creds, self.gdrive_settings)
         g_drive.restore(client_id)
         self.clients[client_id] = g_drive
 
     def add_gdrive(self):
-        g_drive = GDrive(self.tmp, self.gdrive_settings)
+        g_drive = GDrive(self.tmp, self.creds, self.gdrive_settings)
         client_id = g_drive.init_auth()
         self.clients[client_id] = g_drive
         return client_id
@@ -40,7 +31,6 @@ class Cloud:
     # Raises CloudIOError
     def push_all(self, file_list, client_id):
         self.clients[client_id].push_all(file_list)
-
 
     # Raises CloudIOError
     def remove(self, filename, client_id):

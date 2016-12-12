@@ -6,32 +6,26 @@ import os
 from googleapiclient.errors import HttpError
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
-from pydrive.files import ApiRequestError, FileNotUploadedError, FileNotDownloadableError
+from pydrive.files import ApiRequestError, FileNotUploadedError, \
+    FileNotDownloadableError
 
-from icfs.cloudapi.constants import CLOUD_CREDENTIAL_DIR_NAME
 from icfs.cloudapi.exceptions import CloudIOError
-from icfs.global_constants import DATA_ROOT
 
 
 class GDrive:
-    def __init__(self, tmp_location, settings_file):
+    def __init__(self, tmp_location, creds_location, settings_file):
         self.client_id = None
-        self.cred_dir = self.__init_cred_dir()
+        self.cred_dir = creds_location
         self.gauth = None
         self.drive = None
         self.tmp = tmp_location
         self.settings = settings_file
 
-    def __init_cred_dir(self):
-        loc = os.path.join(DATA_ROOT, CLOUD_CREDENTIAL_DIR_NAME)
-        if not os.path.isdir(loc):
-            os.mkdir(loc)
-        return loc
-
     def restore(self, client_id):
         self.client_id = client_id
         gauth = GoogleAuth(settings_file=self.settings)
-        gauth.LoadCredentialsFile(os.path.join(self.cred_dir, self.client_id + ".json"))
+        gauth.LoadCredentialsFile(
+            os.path.join(self.cred_dir, self.client_id + ".json"))
         if gauth.credentials is None:
             gauth.CommandLineAuth()
         elif gauth.access_token_expired:
@@ -40,7 +34,8 @@ class GDrive:
         else:
             # Initialize the saved creds
             gauth.Authorize()
-        gauth.SaveCredentialsFile(os.path.join(self.cred_dir, self.client_id + ".json"))
+        gauth.SaveCredentialsFile(
+            os.path.join(self.cred_dir, self.client_id + ".json"))
         self.gauth = gauth
         self.__init_drive()
 
@@ -50,8 +45,10 @@ class GDrive:
         self.gauth = gauth
         self.__init_drive()
         self.__set_client_id()
-        if not os.path.exists(os.path.join(self.cred_dir, self.client_id + ".json")):
-            gauth.SaveCredentialsFile(os.path.join(self.cred_dir, self.client_id + ".json"))
+        if not os.path.exists(
+                os.path.join(self.cred_dir, self.client_id + ".json")):
+            gauth.SaveCredentialsFile(
+                os.path.join(self.cred_dir, self.client_id + ".json"))
         return self.client_id
 
     def __set_client_id(self):
@@ -73,7 +70,8 @@ class GDrive:
         return self.drive.ListFile({'q': query}).GetList()
 
     def list_all(self):
-        return self.drive.ListFile({'q': "'root' in parents or trashed=true"}).GetList()
+        return self.drive.ListFile(
+            {'q': "'root' in parents or trashed=true"}).GetList()
 
     def about(self):
         return self.drive.GetAbout()
@@ -112,11 +110,11 @@ class GDrive:
         except ApiRequestError as e:
             raise CloudIOError(e.message)
 
-    def push_all(self,filelist):
+    def push_all(self, filelist):
         try:
             threads = []
             for fname in filelist:
-                th = threading.Thread(target=self.push,args=(fname,))
+                th = threading.Thread(target=self.push, args=(fname,))
                 th.start()
                 threads.append(th)
             for th in threads:

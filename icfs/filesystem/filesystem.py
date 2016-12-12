@@ -1,10 +1,10 @@
 import json
-import os
 import random
 import time
 from errno import ENOENT
 from stat import S_IFDIR
 
+import os
 from fuse import Operations, FUSE, FuseOSError
 
 import icfs.filesystem.constants as constants
@@ -19,9 +19,10 @@ from icfs.logger import logger, class_decorator
 
 @class_decorator(logger)
 class FileSystem(Operations):
-    def __init__(self, mpt):
+    def __init__(self, mpt, cred, meta):
         self.mnt = mpt
-        self.meta = constants.MOUNT_ROOT
+        self.cred = self.__init_dir(cred)
+        self.meta = self.__init_dir(meta)
         self.root = None  # FileObject
         self.cwd = None  # FileObject
         self.accounts = []
@@ -30,6 +31,11 @@ class FileSystem(Operations):
         self.open_file_names = dict()  # {k-name, v- number_of_open}
         self.fd = 0
         self.__create_cloud()
+
+    def __init_dir(self, path):
+        if not os.path.exists(path):
+            os.makedirs(path)
+        return path
 
     def start(self):
         print "Creating Root..."
@@ -43,18 +49,18 @@ class FileSystem(Operations):
         self.__increment_link(self.root.file_path)
         self.__close(self.root)
 
-
     def __create_cwd(self):
         self.cwd = self.root
 
     # 1. Create Cloud Object
     # 2. Check if accounts already registered.
     def __create_cloud(self):
-        self.cloud = Cloud(os.path.join(PROJECT_ROOT, "gdirve_settings.yaml"))
-        if os.path.exists(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME)):
+        self.cloud = Cloud(os.path.join(PROJECT_ROOT, "gdirve_settings.yaml"),
+                           self.meta, self.cred)
+        if os.path.exists(os.path.join(self.cred, CLOUD_ACCOUNTS_FILE_NAME)):
             self.__load_accounts()
         else:
-            with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME),
+            with open(os.path.join(self.cred, CLOUD_ACCOUNTS_FILE_NAME),
                       'a+') as fp:
                 data = {
                     "accounts": []
@@ -63,7 +69,7 @@ class FileSystem(Operations):
 
     def __load_accounts(self):
         data = {}
-        with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME), "r") as af:
+        with open(os.path.join(self.cred, CLOUD_ACCOUNTS_FILE_NAME), "r") as af:
             data = json.load(af)
         for account_id in data['accounts']:
             self.cloud.restore_gdrive(account_id)
@@ -72,7 +78,7 @@ class FileSystem(Operations):
     def add_account(self):
         account_id = self.cloud.add_gdrive()
         self.accounts.append(account_id)
-        with open(os.path.join(self.meta, CLOUD_ACCOUNTS_FILE_NAME),
+        with open(os.path.join(self.cred, CLOUD_ACCOUNTS_FILE_NAME),
                   "r+") as af:
             data = json.load(af)
             data["accounts"].append(account_id)
@@ -243,7 +249,7 @@ class FileSystem(Operations):
                 parent_fo.open("r")
                 hc_data = self.__search_hc(parent_fo.a_f_py_obj, p)
                 self.__close(parent_fo)
-                #parent_fo.close()
+                # parent_fo.close()
                 if hc_data is None:
                     raise ICFSError("Head Chunk Not Found")
                 parent_fo = FileObject(self.meta, parent_file_path, self.cloud)

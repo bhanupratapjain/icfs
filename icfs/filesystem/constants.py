@@ -9,6 +9,8 @@ CHUNK_PREFIX = "_chunk_"
 LOCAL_ASSEMBLED_CHUNK = "_assembled_file_"
 ROOT_HC = "_hc_root"
 MOUNT_ROOT = os.path.join(DATA_ROOT, "meta")
+META_ROOT = os.path.join(DATA_ROOT, "meta")
+CRED_ROOT = os.path.join(DATA_ROOT, "creds")
 CLOUD_ACCOUNTS_FILE_NAME = "_fs_cloud_accounts.json"
 
 FILE = 0

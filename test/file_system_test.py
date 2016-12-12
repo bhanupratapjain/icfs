@@ -1,5 +1,6 @@
 import os
 
+from icfs.filesystem import constants
 from icfs.filesystem.filesystem import FileSystem
 from icfs.global_constants import DATA_ROOT
 
@@ -21,9 +22,10 @@ if __name__ == "__main__":
     # print os.path.join("/","a")
 
 
-    fs = FileSystem(os.path.join(DATA_ROOT, "mnt"))
+    fs = FileSystem(os.path.join(DATA_ROOT, "mnt"), constants.CRED_ROOT,
+                    constants.META_ROOT)
     #
-    remove_files(fs)
+    # remove_files(fs)
     #
     # fs.add_account()
     # fs.add_account()
