@@ -30,6 +30,7 @@ class Chunk:
     def rsync_create(self , data=""):
         f = open(os.path.join(self.mpt, self.name), 'w+')
         f.write(data)
+        f.flush()
         f.seek(0)
         checksums = pyrsync.blockchecksums(f, constants.CHUNK_SIZE)
         print "checksums", checksums

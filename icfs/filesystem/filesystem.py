@@ -381,7 +381,7 @@ class FileSystem(Operations):
     def utimens(self, path, times=None):
         pass
 
-    def pwrite(self, path, data, offset, fh):
+    def write(self, path, data, offset, fh):
         fo = self.open_files[fh]
         bytes = fo.write(data, offset)
         fo.push()

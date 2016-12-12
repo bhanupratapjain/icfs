@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 import uuid
@@ -8,7 +9,6 @@ from icfs.cloudapi.exceptions import CloudIOError
 from icfs.filesystem.head_chunk import HeadChunk
 from icfs.logger import class_decorator, logger
 from pyrsync import pyrsync
-import copy
 
 
 @class_decorator(logger)
@@ -85,9 +85,9 @@ class FileObject:
         print "Deleting Local Files for Path [{}]".format(self.file_path)
 
         if self.head_chunk is not None and self.head_chunk.chunk_meta is not None:
-            for chunk in self.head_chunk.chunk_meta.chunks:
-                if os.path.exists(os.path.join(self.mpt, chunk.name)):
-                    os.remove(os.path.join(self.mpt, chunk.name))
+            # for chunk in self.head_chunk.chunk_meta.chunks:
+            #     if os.path.exists(os.path.join(self.mpt, chunk.name)):
+            #         os.remove(os.path.join(self.mpt, chunk.name))
 
             os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
 
@@ -171,7 +171,28 @@ class FileObject:
             delta = pyrsync.rsyncdelta(f, (chck_weak, chck_strong),
                                        constants.CHUNK_SIZE)
         print "starting rsync chunks 4", self.head_chunk.chunk_meta.chunks
+
+        new_delta = []
+
+        for d in delta:
+            if not isinstance(d, int) and len(d) > constants.CHUNK_SIZE:
+                # i = 0
+                # while i < len(d):
+                #     new_delta.append(d[i:i+constants.CHUNK_SIZE])
+                #     if i + constants.CHUNK_SIZE > len(d):
+                #         break
+                #     i += constants.CHUNK_SIZE
+                # remain = d[i:]
+                # if remain != "":
+                #     new_delta.append(remain)
+                parts = [d[i:i + constants.CHUNK_SIZE] for i in
+                         range(0, len(d), constants.CHUNK_SIZE)]
+                new_delta.extend(parts)
+            else:
+                new_delta.append(d)
+        print "new delta", new_delta
         print "delta,", delta
+        delta = new_delta
         new_chunks = []
         push_chunks = []
         del_chunks = copy.deepcopy(self.head_chunk.chunk_meta.chunks)
@@ -180,9 +201,15 @@ class FileObject:
         for d_val in delta[1:]:
             if isinstance(d_val, int):
                 chunk = self.head_chunk.chunk_meta.chunks[d_val]
-                print "dval ",d_val,"chunk.name ",chunk.name
+                print "dval ", d_val, "chunk.name ", chunk.name
                 new_chunks.append(chunk)
-                del_chunks.remove(chunk)
+                r_index = -1
+                for i, ch in enumerate(del_chunks):
+                    if ch.name == chunk.name:
+                        r_index = i
+                        break
+                del_chunks.pop(r_index)
+                # del_chunks.remove(chunk)
             else:
                 chunk = self.head_chunk.chunk_meta.add_rsync_chunk(d_val)
                 new_chunks.append(chunk)
@@ -207,7 +234,7 @@ class FileObject:
                         a_file += buf
                         of.write(buf)
                         # TODO: Uncomment when Rsync is impl.
-                    os.remove(os.path.join(self.mpt, chunk.name))
+                        # os.remove(os.path.join(self.mpt, chunk.name))
         print "chunks", self.head_chunk.chunk_meta.chunks
         print "assembled file", a_file
         return local_file_name
