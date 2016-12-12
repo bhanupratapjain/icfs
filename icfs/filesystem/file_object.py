@@ -1,7 +1,7 @@
+import copy
+import os
 import time
 import uuid
-
-import os
 from stat import S_IFREG, S_IFDIR
 
 import constants
@@ -83,9 +83,16 @@ class FileObject:
 
     def remove_local(self):
         print "Deleting Local Files for Path [{}]".format(self.file_path)
-        os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
-        self.head_chunk.chunk_meta = None
-        if self.file_path != "/":
+
+        if self.head_chunk is not None and self.head_chunk.chunk_meta is not None:
+            for chunk in self.head_chunk.chunk_meta.chunks:
+                if os.path.exists(os.path.join(self.mpt, chunk.name)):
+                    os.remove(os.path.join(self.mpt, chunk.name))
+
+            os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
+
+            self.head_chunk.chunk_meta = None
+        if self.file_path != "/" and self.head_chunk is not None:
             os.remove(os.path.join(self.mpt, self.head_chunk.name))
             self.head_chunk = None
         if self.a_f_name:
@@ -97,8 +104,8 @@ class FileObject:
     def push(self):
         obj_arr = [self.head_chunk, self.head_chunk.chunk_meta]
         push_chunks, remove_chunks = self.rsync_chunks()
-        print push_chunks
-        print remove_chunks
+        print "push_chunks", push_chunks
+        print "remove_chunks", remove_chunks
         obj_arr.extend(push_chunks)
         # TODO change the following to push all files  and do that in a separate thread
         acc_files_dict = dict()
@@ -134,41 +141,75 @@ class FileObject:
                 except CloudIOError as cie:
                     print "Error removing from account {} {}".format(acc,
                                                                      cie.message)
-            os.remove(os.path.join(self.mpt, chunk.name))
+            if os.path.exists(os.path.join(self.mpt, chunk.name)):
+                os.remove(os.path.join(self.mpt, chunk.name))
 
     # should return chunk objects
     def rsync_chunks(self):
         assmbl = False
         chck_weak = []
         chck_strong = []
+        print "starting rsync chunks", self.head_chunk.chunk_meta.chunks
         for chunk in self.head_chunk.chunk_meta.chunks:
             if chunk.checksum_weak is not None:
                 chck_weak.append(chunk.checksum_weak)
             if chunk.checksum_strong is not None:
                 chck_strong.append(chunk.checksum_strong)
-
+        print "starting rsync chunks 1", self.head_chunk.chunk_meta.chunks
         if self.a_f_name is None:
             assmbl = True
             self.a_f_name = self.assemble()
             print "creating assebled file"
         else:
             print "not creating assebled file"
+        print "starting rsync chunks 2", self.head_chunk.chunk_meta.chunks
         print "old hashes,", chck_weak, chck_strong
         print "afn{}, name{}, hc{}".format(self.a_f_name, self.file_path,
                                            self.head_chunk.name)
+        print "starting rsync chunks 3", self.head_chunk.chunk_meta.chunks
         with open(os.path.join(self.mpt, self.a_f_name), "r") as f:
             delta = pyrsync.rsyncdelta(f, (chck_weak, chck_strong),
                                        constants.CHUNK_SIZE)
+        print "starting rsync chunks 4", self.head_chunk.chunk_meta.chunks
+
+        new_delta = []
+
+        for d in delta:
+            if not isinstance(d, int) and len(d) > constants.CHUNK_SIZE:
+                # i = 0
+                # while i < len(d):
+                #     new_delta.append(d[i:i+constants.CHUNK_SIZE])
+                #     if i + constants.CHUNK_SIZE > len(d):
+                #         break
+                #     i += constants.CHUNK_SIZE
+                # remain = d[i:]
+                # if remain != "":
+                #     new_delta.append(remain)
+                parts = [d[i:i + constants.CHUNK_SIZE] for i in
+                         range(0, len(d), constants.CHUNK_SIZE)]
+                new_delta.extend(parts)
+            else:
+                new_delta.append(d)
+        print "new delta", new_delta
         print "delta,", delta
+        delta = new_delta
         new_chunks = []
         push_chunks = []
-        del_chunks = self.head_chunk.chunk_meta.chunks
+        del_chunks = copy.deepcopy(self.head_chunk.chunk_meta.chunks)
         print "del chunks ", del_chunks
+        print "starting rsync chunks 5", self.head_chunk.chunk_meta.chunks
         for d_val in delta[1:]:
             if isinstance(d_val, int):
                 chunk = self.head_chunk.chunk_meta.chunks[d_val]
+                print "dval ", d_val, "chunk.name ", chunk.name
                 new_chunks.append(chunk)
-                del_chunks.remove(chunk)
+                r_index = -1
+                for i, ch in enumerate(del_chunks):
+                    if ch.name == chunk.name:
+                        r_index = i
+                        break
+                del_chunks.pop(r_index)
+                # del_chunks.remove(chunk)
             else:
                 chunk = self.head_chunk.chunk_meta.add_rsync_chunk(d_val)
                 new_chunks.append(chunk)
@@ -184,14 +225,16 @@ class FileObject:
     def assemble(self):
         chunks = self.head_chunk.chunk_meta.chunks
         local_file_name = constants.LOCAL_ASSEMBLED_CHUNK + self.head_chunk.name
+        a_file = ""
         if not os.path.exists(os.path.join(self.mpt, local_file_name)):
             with open(os.path.join(self.mpt, local_file_name), "w") as of:
                 for chunk in chunks:
                     with open(os.path.join(self.mpt, chunk.name), "r") as chf:
                         buf = chf.read(constants.CHUNK_SIZE)
+                        a_file += buf
                         of.write(buf)
                         # TODO: Uncomment when Rsync is impl.
-                        # os.remove(os.path.join(self.mpt, chunk.name))
+                    os.remove(os.path.join(self.mpt, chunk.name))
         return local_file_name
 
     def write(self, data, offset):
