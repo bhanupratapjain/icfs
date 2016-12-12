@@ -1,9 +1,9 @@
 import json
 import multiprocessing
-import os
 import shutil
 
 import click
+import os
 
 from icfs.cloudapi.cloud import Cloud
 from icfs.filesystem import constants
@@ -26,7 +26,9 @@ def cli():
               help='Initialize ICFS')
 @click.option('-a', '--no-accounts', type=int, default="3",
               help='Number of Accounts')
-def icfs_mount(mount_location, init, no_accounts):
+@click.option('-d', '--delete', type=bool, default=False, flag_value=True,
+              help='Delete All Storage')
+def icfs_mount(mount_location, init, no_accounts, delete):
     if init:
         click.echo("Initializing ICFS...")
         if os.path.exists(icfs_creds_dir):
@@ -40,11 +42,21 @@ def icfs_mount(mount_location, init, no_accounts):
             fs.add_account()
     else:
         click.echo("Restoring ICFS...")
+        if os.path.exists(icfs_meta_dir):
+            shutil.rmtree(icfs_meta_dir, ignore_errors=True)
         fs = FileSystem(mount_location, icfs_creds_dir, icfs_meta_dir)
         # if no_accounts == 1:
         #     fs.add_account()
     click.echo("Mounting at location [{}]...".format(mount_location))
+
+    if delete:
+        click.echo("Deleting all cloud storage...")
+        #  Delete All Files From Account
+        for acc in fs.accounts:
+            fs.cloud.remove_all(acc)
+
     click.echo("Starting...")
+
     p = multiprocessing.Process(target=fs.start,
                                 name='icfs')
     p.start()

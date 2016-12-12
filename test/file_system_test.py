@@ -25,7 +25,7 @@ if __name__ == "__main__":
     fs = FileSystem(os.path.join(DATA_ROOT, "mnt"), constants.CRED_ROOT,
                     constants.META_ROOT)
     #
-    # remove_files(fs)
+    remove_files(fs)
     #
     # fs.add_account()
     # fs.add_account()
