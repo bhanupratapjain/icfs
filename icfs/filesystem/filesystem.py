@@ -40,6 +40,9 @@ class FileSystem(Operations):
     def __create_root(self):
         self.root = FileObject(self.meta, "/", self.cloud)
         self.root.create_root(self.accounts)
+        self.__increment_link(self.root.file_path)
+        self.__close(self.root)
+
 
     def __create_cwd(self):
         self.cwd = self.root
