@@ -3,7 +3,6 @@ import os
 from icfs.cloudapi.constants import CLOUD_TEMP_DIR_NAME
 from icfs.cloudapi.google import GDrive
 from icfs.global_constants import DATA_ROOT
-from icfs.logger import class_decorator, logger
 
 
 # @class_decorator(logger)
@@ -39,8 +38,8 @@ class Cloud:
         self.clients[client_id].push(filename)
 
     # Raises CloudIOError
-    def push_all(self, filelist, clientid):
-        self.clients[clientid].push_all(filelist)
+    def push_all(self, file_list, client_id):
+        self.clients[client_id].push_all(file_list)
 
 
     # Raises CloudIOError

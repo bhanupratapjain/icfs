@@ -113,7 +113,9 @@ class FileSystem(Operations):
             fo = FileObject(self.meta, path, self.cloud)
             try:
                 self.__find_head_chunk(fo)
+                self.__increment_link(path)
                 d = fo.getattr()
+                self.__close(fo)
             except ICFSError as err:
                 print err.message
                 raise FuseOSError(ENOENT)
@@ -184,7 +186,7 @@ class FileSystem(Operations):
         return self.__open(fo, flags)
 
     def __get_py_flags(self, flags):
-        py_flag = None
+        py_flag = 'a+'
         if flags == os.O_APPEND:
             py_flag = 'a'
         elif flags == os.O_RDONLY:
@@ -192,7 +194,7 @@ class FileSystem(Operations):
         elif flags == os.O_WRONLY or flags == os.O_WRONLY | os.O_CREAT:
             py_flag = 'w'
         elif flags == os.O_RDWR:
-            py_flag = "r+"
+            py_flag = 'r+'
         print "Converting [{}] to [{}]".format(flags, py_flag)
         return py_flag
 
@@ -202,7 +204,7 @@ class FileSystem(Operations):
         return filter(lambda x: x != '', parents)
 
     def __search_hc(self, a_f_py_obj, file_name):
-        print "file_name ", file_name, "a_f_py_obj.name ,", a_f_py_obj.name
+        print "search file_name - ", file_name, "assmbled fname - ", a_f_py_obj.name
         for line in a_f_py_obj:
             if line.startswith(file_name):
                 hc_data = line.split()
@@ -354,7 +356,7 @@ class FileSystem(Operations):
     def utimens(self, path, times=None):
         pass
 
-    def write(self, path, data, offset, fh):
+    def pwrite(self, path, data, offset, fh):
         fo = self.open_files[fh]
         bytes = fo.write(data, offset)
         fo.push()

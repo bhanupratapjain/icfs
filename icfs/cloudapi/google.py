@@ -104,7 +104,7 @@ class GDrive:
             threads = []
             c_file_list = self.list_all()
             for c_file in c_file_list:
-                th = threading.Thread(target=c_file.Delete())
+                th = threading.Thread(target=c_file.Delete)
                 th.start()
                 threads.append(th)
             for th in threads:
@@ -116,7 +116,7 @@ class GDrive:
         try:
             threads = []
             for fname in filelist:
-                th = threading.Thread(target=self.push(),args=(fname,))
+                th = threading.Thread(target=self.push,args=(fname,))
                 th.start()
                 threads.append(th)
             for th in threads:

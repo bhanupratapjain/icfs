@@ -37,7 +37,7 @@ FORMAT = '[%(asctime)s] %(message)s'
 
 # Change logging LEVEL according to debugging needs.
 # Probably better to read this from a config or a launch parameter.
-LEVEL = logging.ERROR
+LEVEL = logging.CRITICAL
 
 logging.basicConfig(format=FORMAT, level=LEVEL)
 # Up to here only for app/__init__.py

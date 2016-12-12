@@ -1,11 +1,11 @@
-import os
 import time
 import uuid
+
+import os
 from stat import S_IFREG, S_IFDIR
 
 import constants
 from icfs.cloudapi.exceptions import CloudIOError
-from icfs.filesystem.exceptions import ICFSError
 from icfs.filesystem.head_chunk import HeadChunk
 from icfs.logger import class_decorator, logger
 from pyrsync import pyrsync
@@ -66,25 +66,31 @@ class FileObject:
         self.head_chunk.fetch()
         self.head_chunk.load()
         self.a_f_name = self.assemble()
-        print "Opening File [%s] Flags[%s] Path[%s]" % (self.a_f_name, flags, self.file_path)
+        print "Opening File [%s] Flags[%s] Path[%s]" % (
+        self.a_f_name, flags, self.file_path)
         self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), flags)
 
     def close(self, delete_local=False):
         if self.a_f_py_obj is not None:
-            print "Closing File [{}] Path[{}]".format(self.a_f_name, self.file_path)
+            print "Closing File [{}] Path[{}]".format(self.a_f_name,
+                                                      self.file_path)
             self.a_f_py_obj.close()
             self.head_chunk.size = os.path.getsize(
                 os.path.join(self.mpt, self.a_f_name))
             self.head_chunk.write_file()
-            if delete_local:
-                if self.file_path != "/":
-                    os.remove(os.path.join(self.mpt, self.a_f_name))
-                    os.remove(
-                        os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
-                    os.remove(os.path.join(self.mpt, self.head_chunk.name))
-                    self.head_chunk = None
-                    self.a_f_py_obj = None
-                    self.a_f_name = None
+        if delete_local:
+            self.remove_local()
+
+    def remove_local(self):
+        if self.file_path != "/":
+            print "Deleting Local Files for Path [{}]".format(self.file_path)
+            if self.a_f_name:
+                os.remove(os.path.join(self.mpt, self.a_f_name))
+            os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
+            os.remove(os.path.join(self.mpt, self.head_chunk.name))
+            self.head_chunk = None
+            self.a_f_py_obj = None
+            self.a_f_name = None
 
     # throws ICFS error
     def push(self):
@@ -97,13 +103,13 @@ class FileObject:
         acc_files_dict = dict()
         for obj in obj_arr:
             for acc in obj.accounts:
-                if acc_files_dict[acc] is None:
+                if acc not in acc_files_dict:
                     acc_files_dict[acc] = []
                 acc_files_dict[acc].append(obj.name)
 
         for key, value in acc_files_dict.iteritems():
             print "Pushing files {} for account {}".format(value, key)
-            self.cloud.push_all(key, value)
+            self.cloud.push_all(value, key)
 
         # for obj in obj_arr:
         #     acc_push_count = 0
@@ -121,10 +127,12 @@ class FileObject:
         for chunk in remove_chunks:
             for acc in chunk.accounts:
                 try:
-                    print "Removing obj {} from account {}".format(obj.name, acc)
+                    print "Removing obj {} from account {}".format(obj.name,
+                                                                   acc)
                     self.cloud.remove(chunk.name, acc)
                 except CloudIOError as cie:
-                    print "Error removing from account {} {}".format(acc, cie.message)
+                    print "Error removing from account {} {}".format(acc,
+                                                                     cie.message)
             os.remove(os.path.join(self.mpt, chunk.name))
 
     # should return chunk objects
@@ -145,9 +153,11 @@ class FileObject:
         else:
             print "not creating assebled file"
         print "old hashes,", chck_weak, chck_strong
-        print "afn{}, name{}, hc{}".format(self.a_f_name, self.file_path, self.head_chunk.name)
+        print "afn{}, name{}, hc{}".format(self.a_f_name, self.file_path,
+                                           self.head_chunk.name)
         with open(os.path.join(self.mpt, self.a_f_name), "r") as f:
-            delta = pyrsync.rsyncdelta(f, (chck_weak, chck_strong), constants.CHUNK_SIZE)
+            delta = pyrsync.rsyncdelta(f, (chck_weak, chck_strong),
+                                       constants.CHUNK_SIZE)
         print "delta,", delta
         new_chunks = []
         push_chunks = []
@@ -208,11 +218,13 @@ class FileObject:
         self.head_chunk.load()
         now = time.time()
         if self.head_chunk.type == constants.FILE:
-            return dict(st_mode=(S_IFREG | 0o755), st_ctime=now, st_mtime=now,
+            attr = dict(st_mode=(S_IFREG | 0o755), st_ctime=now, st_mtime=now,
                         st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
         else:
-            return dict(st_mode=(S_IFDIR | 0o755), st_ctime=now, st_mtime=now,
+            attr = dict(st_mode=(S_IFDIR | 0o755), st_ctime=now, st_mtime=now,
                         st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
+        # self.remove_local()
+        return attr
 
     def split_chunks(self):
         f = open(os.path.join(self.mpt, self.a_f_name), 'r')
