@@ -364,7 +364,10 @@ class FileSystem(Operations):
         parent.a_f_py_obj = open(os.path.join(self.meta, parent.a_f_name), 'w')
 
         for line in files:
-            parent.write(line[0] + " " + line[1] + "\n", 0)
+            if len(line) == 2:
+                parent.write(line[0] + " " + line[1] + "\n", 0)
+            else:
+                parent.write(line[0] + " " + line[1]+" "+line[2]+"  "+line[3] + "\n", 0)
 
         parent.push()
         self.__close(parent)
