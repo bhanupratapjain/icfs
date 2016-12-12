@@ -67,7 +67,7 @@ class FileObject:
         self.head_chunk.load()
         self.a_f_name = self.assemble()
         print "Opening File [%s] Flags[%s] Path[%s]" % (
-        self.a_f_name, flags, self.file_path)
+            self.a_f_name, flags, self.file_path)
         self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), flags)
 
     def close(self, delete_local=False):
@@ -82,13 +82,14 @@ class FileObject:
             self.remove_local()
 
     def remove_local(self):
+        print "Deleting Local Files for Path [{}]".format(self.file_path)
+        os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
+        self.head_chunk.chunk_meta = None
         if self.file_path != "/":
-            print "Deleting Local Files for Path [{}]".format(self.file_path)
-            if self.a_f_name:
-                os.remove(os.path.join(self.mpt, self.a_f_name))
-            os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
             os.remove(os.path.join(self.mpt, self.head_chunk.name))
             self.head_chunk = None
+        if self.a_f_name:
+            os.remove(os.path.join(self.mpt, self.a_f_name))
             self.a_f_py_obj = None
             self.a_f_name = None
 
