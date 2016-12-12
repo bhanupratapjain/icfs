@@ -1,6 +1,6 @@
 from setuptools import setup
 
-setup(name='Integrated Cloud File System',
+setup(name='icfs',
       version='0.1',
       description='Integrated Cloud File System',
       url='https://github.ccs.neu.edu/vigneshu/icfs',
