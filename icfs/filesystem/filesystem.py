@@ -1,6 +1,7 @@
 import json
 import os
 import random
+import threading
 import time
 from errno import ENOENT
 from stat import S_IFDIR
@@ -26,6 +27,7 @@ class FileSystem(Operations):
         self.cwd = None  # FileObject
         self.accounts = []
         # Might need to mutex protect
+        self.fs_lock = threading.Lock()
         self.open_files = dict()  # {k-fd, v- icfs fo}
         self.open_file_names = dict()  # {k-name, v- number_of_open}
         self.fd = 0
@@ -39,10 +41,9 @@ class FileSystem(Operations):
 
     def __create_root(self):
         self.root = FileObject(self.meta, "/", self.cloud)
-        self.root.create_root(self.accounts)
         self.__increment_link(self.root.file_path)
+        self.root.create_root(self.accounts)
         self.__close(self.root)
-
 
     def __create_cwd(self):
         self.cwd = self.root
@@ -100,6 +101,7 @@ class FileSystem(Operations):
             return self.open(path, os.O_WRONLY | os.O_CREAT)
         except Exception:
             import traceback
+            print "Exception in Create"
             traceback.print_exc()
             return 10
 
@@ -115,12 +117,15 @@ class FileSystem(Operations):
         else:
             fo = FileObject(self.meta, path, self.cloud)
             try:
-                self.__find_head_chunk(fo)
                 self.__increment_link(path)
+                self.__find_head_chunk(fo)
+
                 d = fo.getattr()
+                print "Before Close in getattr", path
                 self.__close(fo)
             except ICFSError as err:
-                print err.message
+                print "getattr error", err.message, path
+                self.__close(fo)
                 raise FuseOSError(ENOENT)
             return d
 
@@ -138,26 +143,30 @@ class FileSystem(Operations):
         fo = FileObject(self.meta, path, self.cloud)
         fo.create(constants.DIRECTORY, [p_account, s_account])
         fo.parent = self.__update_parent(fo)
-        self.__increment_link(fo.file_path)
-        fo.open('w')
+        self.__find_and_open(fo, 'w')
         data = ".  " + fo.head_chunk.name + "  " + (
             "    ".join(fo.head_chunk.accounts) + "\n")
         data += "..  " + fo.parent.head_chunk.name + "  " + (
             "    ".join(fo.parent.head_chunk.accounts) + "\n")
         fo.write(data, 0)
         fo.push()
+        fo.parent.push()
         self.__close(fo)
+        self.__close(fo.parent)
 
     def __create(self, path):
         p_account = self.__get_random_account()
         s_account = self.__get_random_account(p_account)
         fo = FileObject(self.meta, path, self.cloud)
+        # self.__increment_link(path)
         fo.create(constants.FILE, [p_account, s_account])
         fo.parent = self.__update_parent(fo)
         try:
             fo.push()
             fo.parent.push()
-            fo.parent.close()
+            self.__close(fo.parent)
+            # self.__close(fo)
+            # fo.parent.close()
         except ICFSError as ie:
             print
             "Error in Pushing at FileSystem Layer. {}".format(ie.message)
@@ -239,11 +248,10 @@ class FileSystem(Operations):
             parent_file_path = "/"
             for i, p in enumerate(parents):
                 parent_file_path = os.path.join(parent_file_path, p)
-                self.__increment_link(parent_fo.file_path)
-                parent_fo.open("r")
+                self.__find_and_open(parent_fo, 'r')
                 hc_data = self.__search_hc(parent_fo.a_f_py_obj, p)
                 self.__close(parent_fo)
-                #parent_fo.close()
+                # parent_fo.close()
                 if hc_data is None:
                     raise ICFSError("Head Chunk Not Found")
                 parent_fo = FileObject(self.meta, parent_file_path, self.cloud)
@@ -255,21 +263,30 @@ class FileSystem(Operations):
 
     def __find_and_open(self, fo, flags):
         self.__find_head_chunk(fo)
-        fo.open(flags)
         self.__increment_link(fo.file_path)
+        fo.open(flags)
 
     def __increment_link(self, path):
+        self.fs_lock.acquire()
         if path in self.open_file_names:
             self.open_file_names[path] += 1
         else:
             self.open_file_names[path] = 1
+        print "Increment Link", path, self.open_file_names[path]
+        if path == "/test":
+            import traceback
+            print traceback.print_stack()
+        self.fs_lock.release()
 
     def __open(self, fo, flags):
         py_flags = self.__get_py_flags(flags)
         self.__find_and_open(fo, py_flags)
+        self.fs_lock.acquire()
         self.fd += 1
         self.open_files[self.fd] = fo
-        return self.fd
+        fd = self.fd
+        self.fs_lock.release()
+        return fd
 
     def read(self, path, length, offset, fh):
         fo = self.open_files[fh]
@@ -297,6 +314,9 @@ class FileSystem(Operations):
 
     def __close(self, fo):
         path = fo.file_path
+        print "In __close", path
+        self.fs_lock.acquire()
+        print "After Lock in __close", path
         links = self.open_file_names[path]
         if links - 1 == 0:
             print "Doing Delete Close", links, path
@@ -306,6 +326,7 @@ class FileSystem(Operations):
             print "Doing Normal Close", links, path
             fo.close()
             self.open_file_names[path] -= 1
+        self.fs_lock.release()
 
     def flush(self, path, fh):
         print "flush", path, fh
@@ -371,7 +392,9 @@ if __name__ == "__main__":
     fs = FileSystem(os.path.join(DATA_ROOT, "mnt"))
     # fs.add_account()
     # fs.add_account()
-    # fs.start()
+    fs.start()
+    fs.open("/", os.O_RDONLY)
+
     # fs.getattr("/hello")
     # fs.create("/test", None)
     # fs.accounts = ['s', 'w']

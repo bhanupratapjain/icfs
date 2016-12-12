@@ -1,7 +1,6 @@
+import os
 import time
 import uuid
-
-import os
 from stat import S_IFREG, S_IFDIR
 
 import constants
@@ -83,9 +82,16 @@ class FileObject:
 
     def remove_local(self):
         print "Deleting Local Files for Path [{}]".format(self.file_path)
-        os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
-        self.head_chunk.chunk_meta = None
-        if self.file_path != "/":
+
+        if self.head_chunk is not None and self.head_chunk.chunk_meta is not None:
+            for chunk in self.head_chunk.chunk_meta.chunks:
+                if os.path.exists(os.path.join(self.mpt, chunk.name)):
+                    os.remove(os.path.join(self.mpt, chunk.name))
+
+            os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
+
+            self.head_chunk.chunk_meta = None
+        if self.file_path != "/" and self.head_chunk is not None:
             os.remove(os.path.join(self.mpt, self.head_chunk.name))
             self.head_chunk = None
         if self.a_f_name:
@@ -134,7 +140,8 @@ class FileObject:
                 except CloudIOError as cie:
                     print "Error removing from account {} {}".format(acc,
                                                                      cie.message)
-            os.remove(os.path.join(self.mpt, chunk.name))
+            if os.path.exists(os.path.join(self.mpt, chunk.name)):
+                os.remove(os.path.join(self.mpt, chunk.name))
 
     # should return chunk objects
     def rsync_chunks(self):
@@ -184,14 +191,17 @@ class FileObject:
     def assemble(self):
         chunks = self.head_chunk.chunk_meta.chunks
         local_file_name = constants.LOCAL_ASSEMBLED_CHUNK + self.head_chunk.name
+        a_file = ""
         if not os.path.exists(os.path.join(self.mpt, local_file_name)):
             with open(os.path.join(self.mpt, local_file_name), "w") as of:
                 for chunk in chunks:
                     with open(os.path.join(self.mpt, chunk.name), "r") as chf:
                         buf = chf.read(constants.CHUNK_SIZE)
+                        a_file += buf
                         of.write(buf)
-                        # TODO: Uncomment when Rsync is impl.
-                        # os.remove(os.path.join(self.mpt, chunk.name))
+                    # TODO: Uncomment when Rsync is impl.
+                    os.remove(os.path.join(self.mpt, chunk.name))
+        print "assembled file",a_file
         return local_file_name
 
     def write(self, data, offset):
@@ -217,6 +227,7 @@ class FileObject:
         return self.a_f_py_obj.read(length)
 
     def getattr(self):
+        print "fo getattr", self.file_path
         self.head_chunk.fetch()
         self.head_chunk.load()
         now = time.time()
@@ -227,6 +238,7 @@ class FileObject:
             attr = dict(st_mode=(S_IFDIR | 0o755), st_ctime=now, st_mtime=now,
                         st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
         # self.remove_local()
+        print "fo getattr Done", self.file_path
         return attr
 
     def split_chunks(self):
