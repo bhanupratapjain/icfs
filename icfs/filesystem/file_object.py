@@ -42,7 +42,7 @@ class FileObject:
             # self.head_chunk.chunk_meta.add_chunk()  # Add a Chunk and append ChunkMeta
             chunk_data = ".  " + constants.ROOT_HC + "\n"
             self.open("w")
-            self.write(chunk_data , 0)
+            self.write(chunk_data, 0)
             # self.head_chunk.chunk_meta.add_chunk(chunk_data)  # Add a Chunk and append ChunkMeta
             # self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), "w+")
             # with open(os.path.join(self.mpt, self.a_f_name), "w") as f:
@@ -66,11 +66,12 @@ class FileObject:
         self.head_chunk.fetch()
         self.head_chunk.load()
         self.a_f_name = self.assemble()
-        print "opening afile [%s][%s]" % (self.a_f_name, flags)
+        print "Opening File [%s] Flags[%s] Path[%s]" % (self.a_f_name, flags, self.file_path)
         self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), flags)
 
     def close(self):
         if self.a_f_py_obj is not None:
+            print "Closing File [{}] Path[{}]".format(self.a_f_name, self.file_path)
             self.a_f_py_obj.close()
             # self.split_chunks()
             self.head_chunk.size = os.path.getsize(

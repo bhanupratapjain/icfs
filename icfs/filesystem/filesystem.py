@@ -186,14 +186,13 @@ class FileSystem(Operations):
         parents = path.split(os.sep)
         return filter(lambda x: x != '', parents)
 
-    # Throws ICFSIOError
     def __search_hc(self, a_f_py_obj, file_name):
         print "file_name ", file_name, "a_f_py_obj.name ,", a_f_py_obj.name
         for line in a_f_py_obj:
             if line.startswith(file_name):
                 hc_data = line.split()
                 return hc_data
-        raise ICFSError("Head Chunk Not Found")
+        return None
 
     # Throws ICFSIOError
     def __find_head_chunk(self, fo):
@@ -223,6 +222,8 @@ class FileSystem(Operations):
                 parent_fo.open("r")
                 hc_data = self.__search_hc(parent_fo.a_f_py_obj, p)
                 parent_fo.close()
+                if hc_data is None:
+                    raise ICFSError("Head Chunk Not Found")
                 parent_fo = FileObject(self.meta, parent_file_path, self.cloud)
                 parent_fo.head_chunk = HeadChunk(self.meta, hc_data[1], self.cloud, hc_data[2:])
 
