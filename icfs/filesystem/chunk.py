@@ -15,6 +15,12 @@ class Chunk:
         self.flags = flags
         self.accounts = accounts
 
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
+
     def create(self, data=""):
         f = open(os.path.join(self.mpt, self.name), 'w+')
         f.write(data)
