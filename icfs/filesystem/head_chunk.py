@@ -44,7 +44,6 @@ class HeadChunk:
             self.chunk_meta.load()
 
     def fetch(self):
-        print "fetch", os.path.join(self.mpt,self.name)
         if not os.path.exists(os.path.join(self.mpt, self.name)):
             for acc in self.accounts:
                 try:

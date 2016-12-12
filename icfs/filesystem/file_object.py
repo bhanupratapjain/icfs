@@ -85,9 +85,9 @@ class FileObject:
         print "Deleting Local Files for Path [{}]".format(self.file_path)
 
         if self.head_chunk is not None and self.head_chunk.chunk_meta is not None:
-            # for chunk in self.head_chunk.chunk_meta.chunks:
-            #     if os.path.exists(os.path.join(self.mpt, chunk.name)):
-            #         os.remove(os.path.join(self.mpt, chunk.name))
+            for chunk in self.head_chunk.chunk_meta.chunks:
+                if os.path.exists(os.path.join(self.mpt, chunk.name)):
+                    os.remove(os.path.join(self.mpt, chunk.name))
 
             os.remove(os.path.join(self.mpt, self.head_chunk.chunk_meta.name))
 
@@ -234,9 +234,7 @@ class FileObject:
                         a_file += buf
                         of.write(buf)
                         # TODO: Uncomment when Rsync is impl.
-                        # os.remove(os.path.join(self.mpt, chunk.name))
-        print "chunks", self.head_chunk.chunk_meta.chunks
-        print "assembled file", a_file
+                    os.remove(os.path.join(self.mpt, chunk.name))
         return local_file_name
 
     def write(self, data, offset):
@@ -262,7 +260,6 @@ class FileObject:
         return self.a_f_py_obj.read(length)
 
     def getattr(self):
-        print "fo getattr", self.file_path
         self.head_chunk.fetch()
         self.head_chunk.load()
         now = time.time()
@@ -273,7 +270,6 @@ class FileObject:
             attr = dict(st_mode=(S_IFDIR | 0o755), st_ctime=now, st_mtime=now,
                         st_atime=now, st_nlink=1, st_size=self.head_chunk.size)
         # self.remove_local()
-        print "fo getattr Done", self.file_path
         return attr
 
     def split_chunks(self):

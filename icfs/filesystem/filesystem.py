@@ -121,10 +121,8 @@ class FileSystem(Operations):
                 self.__find_head_chunk(fo)
 
                 d = fo.getattr()
-                print "Before Close in getattr", path
                 self.__close(fo)
             except ICFSError as err:
-                print "getattr error", err.message, path
                 self.__close(fo)
                 raise FuseOSError(ENOENT)
             return d
@@ -180,7 +178,6 @@ class FileSystem(Operations):
         for acc in fo.head_chunk.accounts:
             wr_str += " {}".format(acc)
         wr_str += "\n"
-        print "writing to parent assemble file ", parent_fo.a_f_name
         parent_fo.write(wr_str, 0)
         return parent_fo
 
@@ -191,7 +188,6 @@ class FileSystem(Operations):
         # if the file_name is a path traverse accordingly and finally append to the data
         # Push these files using cloudapi
         # return success
-        print "open path [{}] flags[{}]".format(path, flags)
         if flags == os.O_WRONLY | os.O_CREAT:
             fo = self.__create(path)
         else:
@@ -208,7 +204,6 @@ class FileSystem(Operations):
             py_flag = 'w'
         elif flags == os.O_RDWR:
             py_flag = 'r+'
-        print "Converting [{}] to [{}]".format(flags, py_flag)
         return py_flag
 
     # Does not return the root
@@ -217,7 +212,6 @@ class FileSystem(Operations):
         return filter(lambda x: x != '', parents)
 
     def __search_hc(self, a_f_py_obj, file_name):
-        print "search file_name - ", file_name, "assmbled fname - ", a_f_py_obj.name
         for line in a_f_py_obj:
             if line.startswith(file_name):
                 hc_data = line.split()
@@ -272,10 +266,6 @@ class FileSystem(Operations):
             self.open_file_names[path] += 1
         else:
             self.open_file_names[path] = 1
-        print "Increment Link", path, self.open_file_names[path]
-        if path == "/test":
-            import traceback
-            print traceback.print_stack()
         self.fs_lock.release()
 
     def __open(self, fo, flags):
@@ -314,16 +304,12 @@ class FileSystem(Operations):
 
     def __close(self, fo):
         path = fo.file_path
-        print "In __close", path
         self.fs_lock.acquire()
-        print "After Lock in __close", path
         links = self.open_file_names[path]
         if links - 1 == 0:
-            print "Doing Delete Close", links, path
             fo.close(True)
             self.open_file_names.pop(path)
         else:
-            print "Doing Normal Close", links, path
             fo.close()
             self.open_file_names[path] -= 1
         self.fs_lock.release()

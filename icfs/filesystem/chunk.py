@@ -33,8 +33,6 @@ class Chunk:
         f.flush()
         f.seek(0)
         checksums = pyrsync.blockchecksums(f, constants.CHUNK_SIZE)
-        print "checksums", checksums
         self.checksum_weak, self.checksum_strong = checksums[0][0] if len(checksums[0]) > 0 else None, checksums[1][
             0] if len(checksums[1]) > 0 else None
-        print "checksums2", self.checksum_weak, self.checksum_strong
         f.close()
