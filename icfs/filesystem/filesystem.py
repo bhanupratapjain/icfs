@@ -1,11 +1,11 @@
 import json
+import os
 import random
 import time
 from errno import ENOENT
-
-import os
-from fuse import Operations, FUSE, FuseOSError
 from stat import S_IFDIR
+
+from fuse import Operations, FUSE, FuseOSError
 
 import icfs.filesystem.constants as constants
 from icfs.cloudapi.cloud import Cloud
@@ -25,7 +25,9 @@ class FileSystem(Operations):
         self.root = None  # FileObject
         self.cwd = None  # FileObject
         self.accounts = []
+        # Might need to mutex protect
         self.open_files = dict()  # {k-fd, v- icfs fo}
+        self.open_file_names = dict()  # {k-name, v- number_of_open}
         self.fd = 0
         self.__create_cloud()
 
@@ -126,13 +128,26 @@ class FileSystem(Operations):
 
     def mkdir(self, path, mode):
         print("mkdir", path)
+        p_account = self.__get_random_account()
+        s_account = self.__get_random_account(p_account)
+        fo = FileObject(self.meta, path, self.cloud)
+        fo.create(constants.DIRECTORY, [p_account, s_account])
+        fo.parent = self.__update_parent(fo)
+        self.__increment_link(fo.file_path)
+        fo.open('w')
+        data = ".  " + fo.head_chunk.name + "  " + (
+            "    ".join(fo.head_chunk.accounts) + "\n")
+        data += "..  " + fo.parent.head_chunk.name + "  " + (
+            "    ".join(fo.parent.head_chunk.accounts) + "\n")
+        fo.write(data, 0)
+        self.__close(fo)
 
     def __create(self, path):
         p_account = self.__get_random_account()
         s_account = self.__get_random_account(p_account)
         fo = FileObject(self.meta, path, self.cloud)
-        fo.create([p_account, s_account])
-        fo.parent = self.__update_parend(fo)
+        fo.create(constants.FILE, [p_account, s_account])
+        fo.parent = self.__update_parent(fo)
         try:
             fo.push()
             fo.parent.push()
@@ -142,10 +157,10 @@ class FileSystem(Operations):
             "Error in Pushing at FileSystem Layer. {}".format(ie.message)
         return fo
 
-    def __update_parend(self, fo):
+    def __update_parent(self, fo):
         directory, name = os.path.split(fo.file_path)
         parent_fo = FileObject(self.meta, directory, self.cloud)
-        self.__open(parent_fo, os.O_APPEND)
+        self.__find_and_open(parent_fo, 'a')
         wr_str = "{} {}".format(name, fo.head_chunk.name)
         for acc in fo.head_chunk.accounts:
             wr_str += " {}".format(acc)
@@ -200,13 +215,12 @@ class FileSystem(Operations):
 
             # If path is root
             if fo.file_path == os.sep:
-                print self.root
-                print self.root.head_chunk
                 fo.head_chunk = self.root.head_chunk
                 return
 
             # Get Split File Paths
-            parents = self.__get_parent_list(fo.file_path)  # Everything after the root
+            parents = self.__get_parent_list(
+                fo.file_path)  # Everything after the root
 
             # If Path is in root.
             # 1. Search in root only for 1st parent
@@ -219,21 +233,34 @@ class FileSystem(Operations):
             parent_file_path = "/"
             for i, p in enumerate(parents):
                 parent_file_path = os.path.join(parent_file_path, p)
+                self.__increment_link(parent_fo.file_path)
                 parent_fo.open("r")
                 hc_data = self.__search_hc(parent_fo.a_f_py_obj, p)
-                parent_fo.close()
+                self.__close(parent_fo)
+                #parent_fo.close()
                 if hc_data is None:
                     raise ICFSError("Head Chunk Not Found")
                 parent_fo = FileObject(self.meta, parent_file_path, self.cloud)
-                parent_fo.head_chunk = HeadChunk(self.meta, hc_data[1], self.cloud, hc_data[2:])
+                parent_fo.head_chunk = HeadChunk(self.meta, hc_data[1],
+                                                 self.cloud, hc_data[2:])
 
             fo.head_chunk = parent_fo.head_chunk
         return
 
+    def __find_and_open(self, fo, flags):
+        self.__find_head_chunk(fo)
+        fo.open(flags)
+        self.__increment_link(fo.file_path)
+
+    def __increment_link(self, path):
+        if path in self.open_file_names:
+            self.open_file_names[path] += 1
+        else:
+            self.open_file_names[path] = 1
+
     def __open(self, fo, flags):
         py_flags = self.__get_py_flags(flags)
-        self.__find_head_chunk(fo)
-        fo.open(py_flags)
+        self.__find_and_open(fo, py_flags)
         self.fd += 1
         self.open_files[self.fd] = fo
         return self.fd
@@ -245,11 +272,11 @@ class FileSystem(Operations):
     def readdir(self, path, fh):
         try:
             fo = FileObject(self.meta, path, self.cloud)
-            self.__open(fo, os.O_RDONLY)
+            self.__find_and_open(fo, 'r')
             files = []
             for line in fo.a_f_py_obj:
                 files.append(line.split()[0])
-            fo.close()
+            self.__close(fo)
             return files
             # return ["hello"]
         except Exception:
@@ -259,7 +286,20 @@ class FileSystem(Operations):
 
     def release(self, path, fh):
         fo = self.open_files[fh]
-        fo.close()
+        self.__close(fo)
+        self.open_files.pop(fh)
+
+    def __close(self, fo):
+        path = fo.file_path
+        links = self.open_file_names[path]
+        if links - 1 == 0:
+            print "Doing Delete Close", links, path
+            fo.close(True)
+            self.open_file_names.pop(path)
+        else:
+            print "Doing Normal Close", links, path
+            fo.close()
+            self.open_file_names[path] -= 1
 
     def flush(self, path, fh):
         print "flush", path, fh
@@ -291,9 +331,10 @@ class FileSystem(Operations):
 
     def unlink(self, path):
         fo = FileObject(self.meta, path, self.cloud)
+        self.__find_head_chunk(fo)
         directory, file = os.path.split(path)
         parent = FileObject(self.meta, directory, self.cloud)
-        self.__open(path, os.O_RDONLY)
+        self.__find_and_open(parent, 'r')
         files = []
         for line in parent.a_f_py_obj:
             if not line.startswith(file):
@@ -305,10 +346,9 @@ class FileSystem(Operations):
         for line in files:
             parent.write(line[0] + " " + line[1] + "\n", 0)
 
-        parent.a_f_py_obj.flush()
-        parent.close()
+        parent.push()
+        self.__close(parent)
 
-        self.__find_head_chunk(fo)
         fo.remove()
 
     def utimens(self, path, times=None):

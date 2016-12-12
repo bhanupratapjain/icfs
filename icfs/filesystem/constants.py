@@ -10,3 +10,6 @@ LOCAL_ASSEMBLED_CHUNK = "_assembled_file_"
 ROOT_HC = "_hc_root"
 MOUNT_ROOT = os.path.join(DATA_ROOT, "meta")
 CLOUD_ACCOUNTS_FILE_NAME = "_fs_cloud_accounts.json"
+
+FILE = 0
+DIRECTORY = 1
