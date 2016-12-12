@@ -198,7 +198,9 @@ class FileObject:
         pos = self.a_f_py_obj.tell()
         self.a_f_py_obj.write(data)
         ret = self.a_f_py_obj.tell() - pos
-        self.head_chunk.size += ret
+        self.head_chunk.size = os.path.getsize(
+            os.path.join(self.mpt, self.a_f_name))
+        self.head_chunk.write_file()
         self.a_f_py_obj.flush()
         # self.split_chunks()
         # try:
