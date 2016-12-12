@@ -66,12 +66,14 @@ class FileObject:
         self.head_chunk.fetch()
         self.head_chunk.load()
         self.a_f_name = self.assemble()
-        print "Opening File [%s] Flags[%s] Path[%s]" % (self.a_f_name, flags, self.file_path)
+        print "Opening File [%s] Flags[%s] Path[%s]" % (
+        self.a_f_name, flags, self.file_path)
         self.a_f_py_obj = open(os.path.join(self.mpt, self.a_f_name), flags)
 
     def close(self, delete_local=False):
         if self.a_f_py_obj is not None:
-            print "Closing File [{}] Path[{}]".format(self.a_f_name, self.file_path)
+            print "Closing File [{}] Path[{}]".format(self.a_f_name,
+                                                      self.file_path)
             self.a_f_py_obj.close()
             self.head_chunk.size = os.path.getsize(
                 os.path.join(self.mpt, self.a_f_name))
@@ -109,10 +111,12 @@ class FileObject:
         for chunk in remove_chunks:
             for acc in chunk.accounts:
                 try:
-                    print "Removing obj {} from account {}".format(obj.name, acc)
+                    print "Removing obj {} from account {}".format(obj.name,
+                                                                   acc)
                     self.cloud.remove(chunk.name, acc)
                 except CloudIOError as cie:
-                    print "Error removing from account {} {}".format(acc, cie.message)
+                    print "Error removing from account {} {}".format(acc,
+                                                                     cie.message)
             os.remove(os.path.join(self.mpt, chunk.name))
 
     # should return chunk objects
@@ -133,9 +137,11 @@ class FileObject:
         else:
             print "not creating assebled file"
         print "old hashes,", chck_weak, chck_strong
-        print "afn{}, name{}, hc{}".format(self.a_f_name, self.file_path, self.head_chunk.name)
+        print "afn{}, name{}, hc{}".format(self.a_f_name, self.file_path,
+                                           self.head_chunk.name)
         with open(os.path.join(self.mpt, self.a_f_name), "r") as f:
-            delta = pyrsync.rsyncdelta(f, (chck_weak, chck_strong), constants.CHUNK_SIZE)
+            delta = pyrsync.rsyncdelta(f, (chck_weak, chck_strong),
+                                       constants.CHUNK_SIZE)
         print "delta,", delta
         new_chunks = []
         push_chunks = []
@@ -167,23 +173,25 @@ class FileObject:
                     with open(os.path.join(self.mpt, chunk.name), "r") as chf:
                         buf = chf.read(constants.CHUNK_SIZE)
                         of.write(buf)
-                    # TODO: Uncomment when Rsync is impl.
-                    #os.remove(os.path.join(self.mpt, chunk.name))
+                        # TODO: Uncomment when Rsync is impl.
+                        # os.remove(os.path.join(self.mpt, chunk.name))
         return local_file_name
 
     def write(self, data, offset):
         pos = self.a_f_py_obj.tell()
         self.a_f_py_obj.write(data)
         ret = self.a_f_py_obj.tell() - pos
-        self.head_chunk.size += ret
+        self.head_chunk.size = os.path.getsize(
+            os.path.join(self.mpt, self.a_f_name))
+        self.head_chunk.write_file()
         self.a_f_py_obj.flush()
-        #self.split_chunks()
-        #try:
+        # self.split_chunks()
+        # try:
         #    self.push()  # Should be moved to write
-        #except ICFSError as ie:
+        # except ICFSError as ie:
         #    print
         #    "Error in Pushing at FileSystem Layer. {}".format(ie.message)
-        #for chunk in self.head_chunk.chunk_meta.chunks:
+        # for chunk in self.head_chunk.chunk_meta.chunks:
         #    os.remove(os.path.join(self.mpt, chunk.name))
         return ret
 

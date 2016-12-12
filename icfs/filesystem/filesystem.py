@@ -140,6 +140,7 @@ class FileSystem(Operations):
         data += "..  " + fo.parent.head_chunk.name + "  " + (
             "    ".join(fo.parent.head_chunk.accounts) + "\n")
         fo.write(data, 0)
+        fo.push()
         self.__close(fo)
 
     def __create(self, path):
@@ -365,7 +366,7 @@ if __name__ == "__main__":
     fs = FileSystem(os.path.join(DATA_ROOT, "mnt"))
     # fs.add_account()
     # fs.add_account()
-    fs.start()
+    # fs.start()
     # fs.getattr("/hello")
     # fs.create("/test", None)
     # fs.accounts = ['s', 'w']
