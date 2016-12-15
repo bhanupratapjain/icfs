@@ -232,7 +232,7 @@ The cloud API provides four main interfaces and has been implemented for Google.
 
 We have implemented a command line interface to enable ease of mount and access to ICFS. Currently we have 2 CLI targets.
 
-1.  icfs mount $langle flags rangle$ $langle mount_location rangle$ : This mounts the specified folder under ICFS.
+1.  `icfs mount <flags> 'mount_location'`$ : This mounts the specified folder under ICFS.
 
     1.  i - initalize with adding account.
 
@@ -240,7 +240,7 @@ We have implemented a command line interface to enable ease of mount and access 
 
     3.  d - delete all files from all registered cloud providers.
 
-2.  icfs stat: Gives the total storage and free storage available in the cloud
+2.  `icfs stat`: Gives the total storage and free storage available in the cloud
 
 [subsec:implementation]
 
