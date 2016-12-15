@@ -111,9 +111,9 @@ We currently have a one step replication. All data is replicated across two serv
 
 ## Implementation
 
-We created a unix inspired file system on merged cloud space. We used the FUSE to override the syscalls. Below are the basic file systems operations supported in ICFS. Figure [fig:icfsarchitecture] gives an overall picture of our system architecture.
+We created a unix inspired file system on merged cloud space. We used the FUSE to override the syscalls. Below are the basic file systems operations supported in ICFS. Below figure gives an overall picture of our system architecture.
 
-![image](architechture.png) [fig:architechture]
+![image](architechture.png)
 
 ### FUSE
 
