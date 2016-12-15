@@ -232,7 +232,7 @@ The cloud API provides four main interfaces and has been implemented for Google.
 
 We have implemented a command line interface to enable ease of mount and access to ICFS. Currently we have 2 CLI targets.
 
-1.  `icfs mount <flags> 'mount_location'`$ : This mounts the specified folder under ICFS.
+1.  `icfs mount <flags> 'mount_location'`: This mounts the specified folder under ICFS.
 
     1.  i - initalize with adding account.
 
