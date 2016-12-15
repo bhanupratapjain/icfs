@@ -1,21 +1,57 @@
-Introduction
-============
+# ICFS (Integrated Cloud File System)
+
 ICFS provides a unified interface for integrating multiple cloud services into one file system for combined storage. This requires splitting of files and distributing across multiple cloud accounts. Additionally, it also helps in uploading only the changed chunks preventing the need for re-uploading the whole file. With one step replication, data anonymity and reduced disk dependency, ICFS is a unique solution for present cloud scenario.
+
+<!-- TOC -->
+
+- [ICFS (Integrated Cloud File System)](#icfs-integrated-cloud-file-system)
+    - [Setup](#setup)
+    - [Introduction](#introduction)
+    - [Novelty](#novelty)
+    - [Design](#design)
+        - [Assumptions](#assumptions)
+        - [Cloud Storage Providers](#cloud-storage-providers)
+        - [Data Structures](#data-structures)
+        - [Disk Storage](#disk-storage)
+        - [Fault Tolerance](#fault-tolerance)
+    - [Implementation](#implementation)
+        - [FUSE](#fuse)
+        - [ICFS Sys Calls](#icfs-sys-calls)
+            - [create](#create)
+            - [open](#open)
+            - [write](#write)
+            - [rm](#rm)
+            - [close](#close)
+            - [mkdir](#mkdir)
+        - [ICFS rsync](#icfs-rsync)
+        - [ICFS Cloud API](#icfs-cloud-api)
+    - [CLI](#cli)
+    - [Known Bugs](#known-bugs)
+    - [Future Work](#future-work)
+
+<!-- /TOC -->
+
+## Setup
+
+- Create a virtual env with `Python 2.7`
+- Go to the project root 
+- To mount check [CLI](#cli)
+
+
+
+## Introduction
 
 With abundant cloud storage distributed across multiple providers it becomes difficult for a user to keep account of the files stored in each service. ICFS aims at reducing this hassle. Additionally, a user can now store a file size much greater than any cloud provider provides in a single account. Also with the future moving into cloud, a solution with a unified file system across different services which operates on minimal disk storage becomes highly important. This has been our major motivation behind this project.
 
-Novelty
-=======
+## Novelty
 
 The solution is novel in two main aspects. One, it allows anonymity of user data. Two, our solution does not rely on local disk storage as in the case of most cloud client systems.
 
-Design
-======
+## Design
 
 In our initial approach we planned to rely on unix filesystem. We decided of using existing inodes/data blocks and distribute them across cloud. Soon we realised that even though we can leverage UNIX’s book-keeping, we still needed to maintain a meta data, which would define cloud relationships. This would have been an additional overhead while duplicating meta data. Finally, we made a tough decision of maintaining our own book-keeping(inodes), custom to our needs. This not only saved us the duplication of meta data but also enabled us to build a platform independent solution.
 
-Assumptions
------------
+### Assumptions
 
 1.  Minimum two cloud providers for 1-step replication.
 
@@ -25,13 +61,11 @@ Assumptions
 
 4.  Supported platforms Linux, BSD or Mac OS/X
 
-Cloud Storage Providers
------------------------
+### Cloud Storage Providers
 
 The user can use multiple cloud providers to accumulate cloud space.The user has access to only 50% of the cloud space, because of one step replication. With more number of accounts added, this reduced space can be compensated. We decided to go with this trade off between data reliability and storage, as the former was of higher importance in our design. We are currently supporting Google Drive in our CloudAPI.
 
-Data Structures
----------------
+### Data Structures
 
 The datastructure used is motivated from UNIX inode structure. The meta of a file is split into two datastructures, HeadChunk and ChunkMeta. The data is split into Chunks of constant size. HeadChunk and ChunkMeta correspond to inode of UNIX filesystem
 
@@ -67,32 +101,27 @@ The datastructure used is motivated from UNIX inode structure. The meta of a fil
 
     3.  accounts: accounts where the corresponding Chunk can be fetched.
 
-Disk Storage
-------------
+### Disk Storage
 
 In our current design, we are targeting to minimize the local disk dependency. We only store the HeadChunk for the root folder. Every other meta and data is fetched on demand and deleted as soon as the operation is complete.
 
-Fault Tolerance
----------------
+### Fault Tolerance
 
 We currently have a one step replication. All data is replicated across two services. If one service goes down, the user can still access/modify data on the second service. However, we are yet to handle the case when the service comes back again and bring back consistency. In an event where the number of services are less than two, our file system goes offline.
 
-Implementation
-==============
+## Implementation
 
 We created a unix inspired file system on merged cloud space. We used the FUSE to override the syscalls. Below are the basic file systems operations supported in ICFS. Figure [fig:icfsarchitecture] gives an overall picture of our system architecture.
 
-![image](Picture1.png) [fig:icfsarchitecture]
+![image](architechture.png) [fig:architechture]
 
-FUSE
-----
+### FUSE
 
 Filesystem in Userspace (FUSE) is a software interface for Unix-like computer operating systems that lets non-privileged users create their own file systems without editing kernel code. This is achieved by running file system code in user space while the FUSE module provides only a “bridge” to the actual kernel interfaces. We used FUSE to override the system calls. Further we discuss the system calls we have implemented.
 
-ICFS Sys Calls
---------------
+### ICFS Sys Calls
 
-### create
+#### create
 
 Creates a file with no chunks and returns an ICFS file descriptor.
 
@@ -108,7 +137,7 @@ Creates a file with no chunks and returns an ICFS file descriptor.
 
 6.  Call open and return a ICFS file descriptor for the newly created file.
 
-### open
+#### open
 
 Opens the specified file and returns an ICFS file descriptor
 
@@ -128,7 +157,7 @@ Opens the specified file and returns an ICFS file descriptor
 
 8.  Return ICFS file descriptor.
 
-### write
+#### write
 
 Writes on to a given file and pushes it to the cloud.
 
@@ -138,7 +167,7 @@ Writes on to a given file and pushes it to the cloud.
 
 3.  Push the written file.
 
-### rm
+#### rm
 
 Deletes the specified file from the cloud taking into account the number of open instances of the file.
 
@@ -156,7 +185,7 @@ Deletes the specified file from the cloud taking into account the number of open
 
 7.  Reduce the number of links to the file. If links is zero remove the file from cloud
 
-### close
+#### close
 
 During Close, the local copy of the file is deleted.
 
@@ -168,12 +197,11 @@ During Close, the local copy of the file is deleted.
 
 4.  if the number of links to the file is zero remove the assembled local file
 
-### mkdir
+#### mkdir
 
 This is similar to File Create, but the data chunks will comprise of a folder structure. Also the HeadChunk will have flag marked to a Folder.
 
-ICFS rsync
-----------
+### ICFS rsync
 
 We are using an open source implementation of the rsync algorithm [(source)](https://github.com/isislovecruft/pyrsync). We have adapted the existing implementation to our needs as following.
 
@@ -185,8 +213,7 @@ We are using an open source implementation of the rsync algorithm [(source)](htt
 
 4.  Push/remove Chunks based on the deltas.
 
-ICFS Cloud API
---------------
+### ICFS Cloud API
 
 The cloud API provides four main interfaces and has been implemented for Google.
 
@@ -200,8 +227,7 @@ The cloud API provides four main interfaces and has been implemented for Google.
 
 5.  About: Gives information for a specified account.
 
-CLI
----
+## CLI
 
 We have implemented a command line interface to enable ease of mount and access to ICFS. Currently we have 2 CLI targets.
 
@@ -217,15 +243,13 @@ We have implemented a command line interface to enable ease of mount and access 
 
 [subsec:implementation]
 
-Known Bugs
-==========
+## Known Bugs
 
 1.  Although we have replicated data, in the event when a account is down, the data might not be fetched from the other account because of the stored meta data in the local system. Deleting the root meta file and rerunning would be a temporary fix but this has to be handled in the code. Note that this is a corner case in files stored directly in root as the the meta files other than root are always deleted.
 
 2.  Concurrent access to file has not been handled. Different computers writing into the file and pushing might result in pushing chunks which when combined would give a corrupted file.
 
-Future Work
-===========
+## Future Work
 
 1.  Complete system calls by implementing rmdir, chmod, chown
 
@@ -238,6 +262,3 @@ Future Work
 5.  We can add encryption of files to ensure better privacy from services like Google, etc. We can do this on a file by file basis or by default. The ChunkMeta and Data Chunks will be encrypted by a random 256 bit AES Key. This Key will be stored in the HeadChunk which will be re-encrypted with the user’s password.
 
 6.  The performance can be improved by maintaining cache tables and searching through them before accessing cloud. This also requires refreshing the cache in the event of file being changed in a different system.
-
-
-                    
