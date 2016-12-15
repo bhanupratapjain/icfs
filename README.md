@@ -28,6 +28,7 @@ ICFS provides a unified interface for integrating multiple cloud services into o
     - [CLI](#cli)
     - [Known Bugs](#known-bugs)
     - [Future Work](#future-work)
+    - [Team](#team)
 
 <!-- /TOC -->
 
@@ -262,3 +263,8 @@ We have implemented a command line interface to enable ease of mount and access 
 5.  We can add encryption of files to ensure better privacy from services like Google, etc. We can do this on a file by file basis or by default. The ChunkMeta and Data Chunks will be encrypted by a random 256 bit AES Key. This Key will be stored in the HeadChunk which will be re-encrypted with the user’s password.
 
 6.  The performance can be improved by maintaining cache tables and searching through them before accessing cloud. This also requires refreshing the cache in the event of file being changed in a different system.
+
+## Team
+- [bhanupratapjain](https://github.ccs.neu.edu/bhanupratapjain)
+- [sourabhb](https://github.ccs.neu.edu/sourabhb)
+- [vigneshu](https://github.ccs.neu.edu/vigneshu)
