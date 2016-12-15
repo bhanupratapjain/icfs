@@ -1,23 +1,20 @@
-
-
-
-Introduction {#sec:introduction}
+Introduction
 ============
 ICFS provides a unified interface for integrating multiple cloud services into one file system for combined storage. This requires splitting of files and distributing across multiple cloud accounts. Additionally, it also helps in uploading only the changed chunks preventing the need for re-uploading the whole file. With one step replication, data anonymity and reduced disk dependency, ICFS is a unique solution for present cloud scenario.
 
 With abundant cloud storage distributed across multiple providers it becomes difficult for a user to keep account of the files stored in each service. ICFS aims at reducing this hassle. Additionally, a user can now store a file size much greater than any cloud provider provides in a single account. Also with the future moving into cloud, a solution with a unified file system across different services which operates on minimal disk storage becomes highly important. This has been our major motivation behind this project.
 
-Novelty {#sec:novelty}
+Novelty
 =======
 
 The solution is novel in two main aspects. One, it allows anonymity of user data. Two, our solution does not rely on local disk storage as in the case of most cloud client systems.
 
-Design {#sec:design}
+Design
 ======
 
 In our initial approach we planned to rely on unix filesystem. We decided of using existing inodes/data blocks and distribute them across cloud. Soon we realised that even though we can leverage UNIX’s book-keeping, we still needed to maintain a meta data, which would define cloud relationships. This would have been an additional overhead while duplicating meta data. Finally, we made a tough decision of maintaining our own book-keeping(inodes), custom to our needs. This not only saved us the duplication of meta data but also enabled us to build a platform independent solution.
 
-Assumptions {#subsec:assumptions}
+Assumptions
 -----------
 
 1.  Minimum two cloud providers for 1-step replication.
@@ -28,7 +25,7 @@ Assumptions {#subsec:assumptions}
 
 4.  Supported platforms Linux, BSD or Mac OS/X
 
-Cloud Storage Providers {#subsec:CloudStorageProviders}
+Cloud Storage Providers
 -----------------------
 
 The user can use multiple cloud providers to accumulate cloud space.The user has access to only 50% of the cloud space, because of one step replication. With more number of accounts added, this reduced space can be compensated. We decided to go with this trade off between data reliability and storage, as the former was of higher importance in our design. We are currently supporting Google Drive in our CloudAPI.
@@ -70,7 +67,7 @@ The datastructure used is motivated from UNIX inode structure. The meta of a fil
 
     3.  accounts: accounts where the corresponding Chunk can be fetched.
 
-Disk Storage {#subsec:DiskStorage}
+Disk Storage
 ------------
 
 In our current design, we are targeting to minimize the local disk dependency. We only store the HeadChunk for the root folder. Every other meta and data is fetched on demand and deleted as soon as the operation is complete.
@@ -92,7 +89,7 @@ FUSE
 
 Filesystem in Userspace (FUSE) is a software interface for Unix-like computer operating systems that lets non-privileged users create their own file systems without editing kernel code. This is achieved by running file system code in user space while the FUSE module provides only a “bridge” to the actual kernel interfaces. We used FUSE to override the system calls. Further we discuss the system calls we have implemented.
 
-ICFS Sys Calls {#subsec:icfssyscalls}
+ICFS Sys Calls
 --------------
 
 ### create
