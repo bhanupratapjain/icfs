@@ -36,6 +36,7 @@ ICFS provides a unified interface for integrating multiple cloud services into o
 
 - Create a virtual env with `Python 2.7`
 - Go to the project root 
+- Add Google Drive poject settings under project root with name `gdirve_settings.yaml`  
 - To mount check [CLI](#cli)
 
 
