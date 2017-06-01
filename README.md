@@ -265,7 +265,10 @@ We have implemented a command line interface to enable ease of mount and access 
 
 6.  The performance can be improved by maintaining cache tables and searching through them before accessing cloud. This also requires refreshing the cache in the event of file being changed in a different system.
 
+## Contributing 
+We love contributions from everyone. To engae, please contact[bhanupratapjain](https://github.com/bhanupratapjain) through isssues and PR
+
 ## Contributors
-- [bhanupratapjain](https://github.ccs.neu.edu/bhanupratapjain)
+- [bhanupratapjain](https://github.com/bhanupratapjain)
 - [sourabhb](https://github.ccs.neu.edu/sourabhb)
 - [vigneshu](https://github.ccs.neu.edu/vigneshu)
